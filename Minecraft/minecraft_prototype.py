@@ -109,6 +109,10 @@ class World:
             self.generate_world()
     
     def generate_world(self):
+
+        bedrock_depth = HEIGHT + (50 * 50)  
+        for x in range(-WIDTH, WIDTH*20, 50):
+            self.add_block(Bedrock(x, bedrock_depth))
         for x in range(-WIDTH, WIDTH*20, 50):
             self.add_block(Grassblock(x, HEIGHT - 50))
             self.add_block(Dirtblock(x, HEIGHT))
@@ -171,6 +175,17 @@ class Stoneblock(Block):
             print(f"Error loading stone block: {er}")
             placeholder = pygame.Surface((50, 50))
             placeholder.fill((128, 128, 128))  
+            return placeholder
+
+class Bedrock(Block):
+    def load_img(self):
+        try:
+            bedrock = pygame.image.load("textures/bedrock.png").convert_alpha()
+            return pygame.transform.scale(bedrock, (50, 50))
+        except pygame.error as er:
+            print(f"error loading bedrock: {er}")
+            placeholder = pygame.Surface((50, 50))
+            placeholder.fill((0, 0, 0))
             return placeholder
 
 class Player:
@@ -375,12 +390,19 @@ while running:
 
     if mouse_buttons[0]:  
         for block in nearby_blocks[:]:
+            if isinstance(block, Bedrock):
+                continue
             block_rect = pygame.Rect(block.rect.x - camera.camera.x, 
                                     block.rect.y - camera.camera.y,
                                     block.rect.width, block.rect.height)
             
             if block_rect.collidepoint(mouse_pos) and \
                pygame.math.Vector2(block.rect.center).distance_to(pygame.math.Vector2(player.rect.center)) <= player.max_mine_distance:
+                if isinstance(block, Bedrock):
+                    pygame.draw.rect(screen, (255, 0, 0), 
+                                (block_rect.x, block_rect.y - 10, 
+                                    block_rect.width, 5))
+                break
                 if block != player.mining_block:
                     player.mining_block = block
                     player.mining_progress = 0
