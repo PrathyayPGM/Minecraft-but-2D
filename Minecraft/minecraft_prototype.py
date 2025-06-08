@@ -4,6 +4,7 @@ import time
 import random
 import pickle
 from pygame import mixer
+import time
 
 # Constants
 WIDTH, HEIGHT = 1000, 800
@@ -23,11 +24,11 @@ SELECTED_COLOR = (255, 255, 0)
 # Initialize pygame
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Yearn for the Mines")
+pygame.display.set_caption("FatalCraft")
 
 # Initialize sound mixer
 mixer.init()
-
+font = pygame.font.SysFont('Arial', 20)
 class Particle:
     def __init__(self, x, y, color):
         self.x = x
@@ -218,12 +219,12 @@ class Player:
                 self.can_jump = True  
                 self.gravity = 0
                 self.rect.bottom = block.rect.top
-                self.world_pos[1] = self.rect.y  # 🟢 Sync world_pos after collision
+                self.world_pos[1] = self.rect.y  
                 break
             elif self.gravity < 0 and self.rect.top < block.rect.bottom and self.rect.colliderect(block.rect):
                 self.gravity = 0
                 self.rect.top = block.rect.bottom
-                self.world_pos[1] = self.rect.y  # 🟢 Sync world_pos after collision
+                self.world_pos[1] = self.rect.y  
                 break
 
 
@@ -268,29 +269,24 @@ def draw_hotbar(screen, player):
 def draw_health_bar(screen, player):
     health_width = 200
     health_height = 20
-    health_x = 20
-    health_y = 20
-    
-    # Background
+    health_x = 320
+    health_y = 725
+
     pygame.draw.rect(screen, (50, 50, 50), (health_x, health_y, health_width, health_height))
-    # Health level
     health_level = max(0, (player.health / player.max_health) * health_width)
     pygame.draw.rect(screen, (255, 0, 0), (health_x, health_y, health_level, health_height))
-    # Border
+    # border
     pygame.draw.rect(screen, WHITE, (health_x, health_y, health_width, health_height), 2)
-    
-    # Health text
+
     font = pygame.font.SysFont(None, 24)
     health_text = font.render(f"Health: {player.health:.1f}/{player.max_health}", True, WHITE)
-    screen.blit(health_text, (health_x + health_width + 10, health_y))
+    screen.blit(health_text, (health_x + health_height, health_y))
 
-# Initialize game objects
 player = Player() 
 world = World()
-world.load()  # Try to load saved world, generates new one if not found
+world.load()  
 camera = Camera(WIDTH, HEIGHT)
 
-# Load sounds
 try:
     mine_sound = mixer.Sound("sounds/mine.wav")
     place_sound = mixer.Sound("sounds/place.wav")
@@ -298,7 +294,6 @@ try:
     hurt_sound = mixer.Sound("sounds/hurt.wav")
 except:
     print("Could not load sounds")
-    # Create dummy sound objects
     mine_sound = mixer.Sound(buffer=bytearray(100))
     place_sound = mixer.Sound(buffer=bytearray(100))
     jump_sound = mixer.Sound(buffer=bytearray(100))
@@ -308,6 +303,7 @@ running = True
 clock = pygame.time.Clock()
 
 while running:
+
     mouse_wheel_up = False
     mouse_wheel_down = False
     
@@ -317,7 +313,7 @@ while running:
             running = False
         
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE and player.on_ground:
+            if event.key in (pygame.K_SPACE, pygame.K_UP, pygame.K_w) and player.on_ground:
                 player.gravity = player.jump_power
                 player.on_ground = False
                 player.can_jump = False
@@ -341,16 +337,16 @@ while running:
                 player.selected_slot = (player.selected_slot + 1) % HOTBAR_SLOTS
 
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
+    if keys[pygame.K_LEFT] or keys[pygame.K_a]:
         player.world_pos[0] -= player.speed
         player.image = pygame.transform.flip(player.original_image, True, False)
         player.facing_right = False
-    if keys[pygame.K_RIGHT]:
+    if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
         player.world_pos[0] += player.speed
         player.image = player.original_image
         player.facing_right = True
 
-    # Fall damage
+    # void damage
     if player.world_pos[1] > HEIGHT * 4:
         player.damage_frames += 1
         if player.damage_frames >= player.damage_delay:
@@ -369,16 +365,14 @@ while running:
         time.sleep(2)
         running = False
 
-    # Get nearby blocks for performance
     nearby_blocks = world.get_nearby_blocks((player.rect.x, player.rect.y), 1000)
     
-    # Mining/placing blocks
+    # mining/placing blocks
     mouse_buttons = pygame.mouse.get_pressed()
     mouse_pos = pygame.mouse.get_pos()
     world_x = mouse_pos[0] + camera.camera.x
     world_y = mouse_pos[1] + camera.camera.y
-    
-    # Left click to mine
+
     if mouse_buttons[0]:  
         for block in nearby_blocks[:]:
             block_rect = pygame.Rect(block.rect.x - camera.camera.x, 
@@ -399,7 +393,6 @@ while running:
                                 block_rect.width * progress_pct, 5))
                 
                 if player.mining_progress >= BLOCK_HEALTH:
-                    # Determine block type and add to inventory
                     item_type = None
                     if isinstance(block, Dirtblock):
                         item_type = "dirt"
@@ -410,16 +403,14 @@ while running:
                     elif isinstance(block, Grassblock):
                         item_type = "grass"
                         color = (0, 255, 0)
-                    
-                    # Create particles
+
                     particles = [Particle(
                         block.rect.centerx + random.randint(-20, 20),
                         block.rect.centery + random.randint(-20, 20),
                         color
                     ) for _ in range(15)]
                     world.add_particles(particles)
-                    
-                    # Add to inventory
+
                     added = False
                     for slot in range(HOTBAR_SLOTS):
                         if player.inventory[slot]["type"] == item_type:
@@ -452,22 +443,19 @@ while running:
         player.mining_block = None
         player.mining_progress = 0
 
-    # Right click to place
     if mouse_buttons[2]:
         selected_item = player.inventory[player.selected_slot]
         if selected_item["type"] and selected_item["count"] > 0:
             grid_x = (world_x // 50) * 50
             grid_y = (world_y // 50) * 50
-            
-            # Check if position is occupied
+
             occupied = False
             temp_rect = pygame.Rect(grid_x, grid_y, 50, 50)
             for block in nearby_blocks:
                 if block.rect.colliderect(temp_rect):
                     occupied = True
                     break
-            
-            # Check adjacent blocks for support
+
             has_support = False
             for dx, dy in [(0, 50), (0, -50), (50, 0), (-50, 0)]:
                 temp_rect = pygame.Rect(grid_x + dx, grid_y + dy, 50, 50)
@@ -477,8 +465,7 @@ while running:
                         break
                 if has_support:
                     break
-            
-            # Don't place inside player or occupied space, and needs support unless at bottom
+
             if (not player.rect.colliderect(temp_rect) and not occupied and 
                 (has_support or grid_y >= HEIGHT - 50)):
                 if selected_item["type"] == "dirt":
@@ -494,36 +481,32 @@ while running:
                 
                 place_sound.play()
 
-    # Update game state
     player.update(nearby_blocks)
     camera.update(player)
     world.update_particles()
-    
-    # Drawing
+
     screen.fill(SKY_BLUE)
-    
-    # Draw blocks with camera
+
     for block in nearby_blocks:
         if (block.rect.right > camera.camera.left and 
             block.rect.left < camera.camera.right and
             block.rect.bottom > camera.camera.top and
             block.rect.top < camera.camera.bottom):
             block.draw(screen, camera)
-    
-    # Draw particles
+
     world.draw_particles(screen, camera)
-    
-    # Draw player
+
     screen.blit(
         player.image,
         (player.rect.x - camera.camera.x, player.rect.y - camera.camera.y)
     )
     
-    # Draw UI
     draw_hotbar(screen, player)
     draw_health_bar(screen, player)
+
+    fps_text = font.render(f"FPS: {int(clock.get_fps())}", True, (255, 0, 0))
+    screen.blit(fps_text, (10, 10))
     
-    # Draw mining progress if mining
     if player.mining_block:
         block_rect = pygame.Rect(
             player.mining_block.rect.x - camera.camera.x,
@@ -539,5 +522,4 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
-pygame.quit()
-sys.exit()
+sys.exit(0)
