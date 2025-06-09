@@ -5,3 +5,5 @@ By the way - here an alert
 
 ```ITS STILL NOT FINISHED```
 so wait some more time
+
+If you want to play the still unfinished version, click on download zipped file, then unzip it, open it and run the main code
