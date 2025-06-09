@@ -140,11 +140,28 @@ class Block:
         self.y = y
         self.rect = pygame.Rect(x, y, 50, 50)
         self.image = self.load_img()
+
+    def draw_health_bar(self, screen, camera):
+        if self.health < self.max_health:
+            bar_width = 50
+            health_pct = self.health / self.max_health
+            bar_x = self.rect.x - camera.camera.x
+            bar_y = self.rect.y - camera.camera.y - 10
+
+            pygame.draw.rect(screen, (50, 50, 50), (bar_x, bar_y, bar_width, 5))
+
+            health_width = int(bar_width * health_pct)
+            health_color = (0, 255, 0) if health_pct > 0.6 else (255, 255, 0) if health_pct > 0.3 else (255, 0, 0)
+            pygame.draw.rect(screen, health_color, (bar_x, bar_y, health_width, 5))
             
     def draw(self, screen, camera):
         screen.blit(self.image, (self.rect.x - camera.camera.x, self.rect.y - camera.camera.y))
 
 class Grassblock(Block):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.health = 50
+    
     def load_img(self):
         try:
             grass_block = pygame.image.load("textures/grass.png").convert_alpha()
@@ -156,6 +173,9 @@ class Grassblock(Block):
             return placeholder
 
 class Dirtblock(Block):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.health = 50
     def load_img(self):
         try:
             dirt_block = pygame.image.load("textures/dirt.png").convert_alpha()
@@ -166,7 +186,10 @@ class Dirtblock(Block):
             placeholder.fill((139, 69, 19))  
             return placeholder
 
-class Stoneblock(Block):  
+class Stoneblock(Block):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.health = 125
     def load_img(self):
         try:
             stone_block = pygame.image.load("textures/stone.png").convert_alpha()
@@ -178,6 +201,9 @@ class Stoneblock(Block):
             return placeholder
 
 class Bedrock(Block):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.health = float('inf')
     def load_img(self):
         try:
             bedrock = pygame.image.load("textures/bedrock.png").convert_alpha()
@@ -396,25 +422,35 @@ while running:
                                     block.rect.y - camera.camera.y,
                                     block.rect.width, block.rect.height)
             
+    if mouse_buttons[0]:  
+        for block in nearby_blocks[:]:
+            block_rect = pygame.Rect(block.rect.x - camera.camera.x, 
+                                    block.rect.y - camera.camera.y,
+                                    block.rect.width, block.rect.height)
+            
             if block_rect.collidepoint(mouse_pos) and \
-               pygame.math.Vector2(block.rect.center).distance_to(pygame.math.Vector2(player.rect.center)) <= player.max_mine_distance:
+            pygame.math.Vector2(block.rect.center).distance_to(pygame.math.Vector2(player.rect.center)) <= player.max_mine_distance:
+
                 if isinstance(block, Bedrock):
                     pygame.draw.rect(screen, (255, 0, 0), 
-                                (block_rect.x, block_rect.y - 10, 
+                                    (block_rect.x, block_rect.y - 10, 
                                     block_rect.width, 5))
-                break
+                    break
+
                 if block != player.mining_block:
                     player.mining_block = block
                     player.mining_progress = 0
-                
+                block_max_health = getattr(block, 'health', BLOCK_HEALTH)
+
                 player.mining_progress += player.mining_speed
+                progress_pct = min(player.mining_progress / block_max_health, 1.0)
                 
-                progress_pct = min(player.mining_progress / BLOCK_HEALTH, 1.0)
+
                 pygame.draw.rect(screen, (255, 255, 255), 
                                 (block_rect.x, block_rect.y - 10, 
                                 block_rect.width * progress_pct, 5))
-                
-                if player.mining_progress >= BLOCK_HEALTH:
+
+                if player.mining_progress >= block_max_health:
                     item_type = None
                     if isinstance(block, Dirtblock):
                         item_type = "dirt"
@@ -432,7 +468,7 @@ while running:
                         color
                     ) for _ in range(15)]
                     world.add_particles(particles)
-
+                    
                     added = False
                     for slot in range(HOTBAR_SLOTS):
                         if player.inventory[slot]["type"] == item_type:
@@ -448,6 +484,7 @@ while running:
                                 added = True
                                 break
                     
+
                     world.blocks.remove(block)
                     chunk_x = block.rect.x // (16*50)
                     chunk_y = block.rect.y // (16*50)
@@ -461,10 +498,6 @@ while running:
         else:
             player.mining_block = None
             player.mining_progress = 0
-    else:
-        player.mining_block = None
-        player.mining_progress = 0
-
     if mouse_buttons[2]:
         selected_item = player.inventory[player.selected_slot]
         if selected_item["type"] and selected_item["count"] > 0:
