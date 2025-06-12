@@ -236,6 +236,8 @@ class Player:
         self.mining_progress = 0
         self.mining_speed = 1  
         self.max_mine_distance = 250
+        self.max_safe_fall = 25 
+        self.fall_damage = 0  
                 
     def load_img(self): 
         try:
@@ -256,6 +258,8 @@ class Player:
 
         for block in ground_blocks:
             if self.rect.colliderect(block.rect) and self.gravity >= 0 and self.rect.bottom > block.rect.top:
+                if self.gravity > self.max_safe_fall:
+                    self.health -= (self.gravity - self.max_safe_fall) * 0.2
                 self.on_ground = True
                 self.can_jump = True  
                 self.gravity = 0
