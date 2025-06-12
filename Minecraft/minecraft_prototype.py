@@ -293,7 +293,7 @@ def draw_hotbar(screen, player):
                 icon_color = (128, 128, 128)
             elif item["type"] == "grass":
                 icon_color = (0, 255, 0)
-                
+               
             pygame.draw.rect(screen, icon_color, 
                            (slot_x + 5, hotbar_y + 5, 
                             SLOT_SIZE - 10, SLOT_SIZE - 10))
