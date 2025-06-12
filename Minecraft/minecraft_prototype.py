@@ -6,7 +6,7 @@ import pickle
 from pygame import mixer
 import time
 
-# Constants
+# constants
 WIDTH, HEIGHT = 1000, 800
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -104,6 +104,10 @@ class World:
                         self.add_block(Dirtblock(x, y))
                     elif block_type == "Stoneblock":
                         self.add_block(Stoneblock(x, y))
+                    elif block_type == "Wood":
+                        self.add_block(Wood(x, y))
+                    elif block_type == "Leaves":
+                        self.add_block(Leaves(x, y))
         except FileNotFoundError:
             print("No saved world found - generating new one")
             self.generate_world()
@@ -119,6 +123,16 @@ class World:
             self.add_block(Dirtblock(x, HEIGHT + 50))
             for y in range(HEIGHT + 100, HEIGHT + (50 * 50), 50):
                 self.add_block(Stoneblock(x, y))
+            if x % 200 == 0 and random.random() < 0.45:
+                is_surface = True
+                for block in self.blocks:
+                    if block.rect.x == x and block.rect.y == HEIGHT - 50 and isinstance(block, Grassblock):
+                        self.generate_tree(x, HEIGHT - 100)
+                        break
+    def generate_tree(self, x, y):
+        
+        tree = Tree(x, y, self)
+        tree.generate()
 
 class Camera:
     def __init__(self, width, height):
@@ -213,6 +227,66 @@ class Bedrock(Block):
             placeholder = pygame.Surface((50, 50))
             placeholder.fill((0, 0, 0))
             return placeholder
+class Wood(Block):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.health = 100
+    
+    def load_img(self):
+        try:
+            wood = pygame.image.load("textures/wood.png").convert_alpha()
+            return pygame.transform.scale(wood, (50, 50))
+        except pygame.error as er:
+            print(f"Error loading wood block: {er}")
+            placeholder = pygame.Surface((50, 50))
+            placeholder.fill((160, 82, 45))
+            return placeholder
+
+class Leaves(Block):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.health = 5
+    
+    def load_img(self):
+        try:
+            leaf = pygame.image.load("textures/leaves.png").convert_alpha()
+            return pygame.transform.scale(leaf, (50, 50))
+        except pygame.error as er:
+            print(f"Error loading leaf block: {er}")
+            placeholder = pygame.Surface((50, 50))
+            placeholder.fill((0, 255, 0))
+            return placeholder
+class Tree:
+    def __init__(self, x, y, world):
+        self.x = x
+        self.y = y
+        self.world = world
+        self.height = random.randint(4, 7)
+        self.height = random.randint(4, 7)
+        if random.random() < 0.2:
+            self.height += random.randint(1, 2) 
+        
+    def generate(self):
+        for i in range(self.height):
+            self.world.add_block(Wood(self.x, self.y - (i * 50)))
+
+        leaves_width = 3  
+        leaves_start = 1  
+        
+        for layer in range(leaves_start, self.height - 1): 
+            y_pos = self.y - (layer * 50)
+
+            for i in range(-(leaves_width//2), (leaves_width//2) + 1):
+                if random.random() > 0.2:  
+                    self.world.add_block(Leaves(self.x + (i * 50), y_pos))
+
+        top_y = self.y - ((self.height - 1) * 50)
+        for i in range(-1, 2):
+            self.world.add_block(Leaves(self.x + (i * 50), top_y))
+
+        if random.random() > 0.7:
+            self.world.add_block(Leaves(self.x, top_y - 50))
+
 
 class Player:
     def __init__(self):
@@ -297,6 +371,10 @@ def draw_hotbar(screen, player):
                 icon_color = (128, 128, 128)
             elif item["type"] == "grass":
                 icon_color = (0, 255, 0)
+            elif item["type"] == "wood":
+                icon_color = (160, 82, 45)
+            elif item["type"] == "leaves":
+                icon_color = (0, 200, 0)
                
             pygame.draw.rect(screen, icon_color, 
                            (slot_x + 5, hotbar_y + 5, 
@@ -465,6 +543,12 @@ while running:
                     elif isinstance(block, Grassblock):
                         item_type = "grass"
                         color = (0, 255, 0)
+                    elif isinstance(block, Wood):
+                        item_type = "wood"
+                        color = (160, 82, 45)
+                    elif isinstance(block, Leaves):
+                        item_type = "leaves"
+                        color = (0, 200, 0)
 
                     particles = [Particle(
                         block.rect.centerx + random.randint(-20, 20),
@@ -533,7 +617,11 @@ while running:
                     world.add_block(Stoneblock(grid_x, grid_y))
                 elif selected_item["type"] == "grass":
                     world.add_block(Grassblock(grid_x, grid_y))
-                
+                elif selected_item["type"] == "wood":
+                    world.add_block(Wood(grid_x, grid_y))   
+                elif selected_item["type"] == "leaves":
+                    world.add_block(Leaves(grid_x, grid_y))   
+
                 selected_item["count"] -= 1
                 if selected_item["count"] <= 0:
                     selected_item["type"] = None
@@ -582,3 +670,4 @@ while running:
     clock.tick(60)
 
 sys.exit(0)
+
