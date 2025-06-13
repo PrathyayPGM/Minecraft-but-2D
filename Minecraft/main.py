@@ -21,12 +21,10 @@ HOTBAR_HEIGHT = SLOT_SIZE
 HOTBAR_MARGIN = 10  
 SELECTED_COLOR = (255, 255, 0)  
 
-# Initialize pygame
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("FatalCraft")
 
-# Initialize sound mixer
 mixer.init()
 font = pygame.font.SysFont('Arial', 20)
 class Particle:
@@ -108,6 +106,13 @@ class World:
                         self.add_block(Wood(x, y))
                     elif block_type == "Leaves":
                         self.add_block(Leaves(x, y))
+                    elif block_type == "IronOre":
+                        self.add_block(Leaves(x, y))
+                    elif block_type == "Coal":
+                        self.add_block(Leaves(x, y))
+                    elif block_type == "Diamond":
+                        self.add_block(Leaves(x, y))
+
         except FileNotFoundError:
             print("No saved world found - generating new one")
             self.generate_world()
@@ -125,7 +130,7 @@ class World:
             for y in range(HEIGHT + 100, HEIGHT + (50 * 50), 50):
                 depth = y - HEIGHT  
                 
-                if random.random() < 0.02:  
+                if random.random() < 0.05:  
                     if depth > 800 and random.random() < 0.3:
                         self.add_block(Diamond(x, y))
                     elif depth > 500 and random.random() < 0.5: 
