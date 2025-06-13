@@ -113,22 +113,36 @@ class World:
             self.generate_world()
     
     def generate_world(self):
-
-        bedrock_depth = HEIGHT + (50 * 50)  
+        bedrock_depth = HEIGHT + (50 * 50)
         for x in range(-WIDTH, WIDTH*20, 50):
             self.add_block(Bedrock(x, bedrock_depth))
+
         for x in range(-WIDTH, WIDTH*20, 50):
             self.add_block(Grassblock(x, HEIGHT - 50))
             self.add_block(Dirtblock(x, HEIGHT))
             self.add_block(Dirtblock(x, HEIGHT + 50))
+
             for y in range(HEIGHT + 100, HEIGHT + (50 * 50), 50):
-                self.add_block(Stoneblock(x, y))
-            if x % 200 == 0 and random.random() < 0.45:
+                depth = y - HEIGHT  
+                
+                if random.random() < 0.02:  
+                    if depth > 800 and random.random() < 0.3:
+                        self.add_block(Diamond(x, y))
+                    elif depth > 500 and random.random() < 0.5: 
+                        self.add_block(IronOre(x, y))
+                    else: 
+                        self.add_block(Coal(x, y))
+                else:
+                    self.add_block(Stoneblock(x, y))
+            
+            if x % 200 == 0 and random.random() < 0.35:
                 is_surface = True
                 for block in self.blocks:
                     if block.rect.x == x and block.rect.y == HEIGHT - 50 and isinstance(block, Grassblock):
                         self.generate_tree(x, HEIGHT - 100)
                         break
+
+        
     def generate_tree(self, x, y):
         
         tree = Tree(x, y, self)
@@ -214,6 +228,47 @@ class Stoneblock(Block):
             placeholder.fill((128, 128, 128))  
             return placeholder
 
+class IronOre(Block):
+    def __init__(self,x, y):
+        super().__init__(x, y)
+        self.health = 150
+    def load_img(self):
+        try:
+            iron = pygame.image.load("textures/iron.png").convert_alpha()
+            return pygame.transform.scale(iron, (50, 50))
+        except pygame.error as er:
+            print(f"error loading iron block: {er}")
+            placeholder = pygame.surface((50, 50))
+            placeholder.fill((74, 75, 76))
+            return placeholder
+        
+class Coal(Block):
+    def __init__(self,x, y):
+        super().__init__(x, y)
+        self.health = 110
+    def load_img(self):
+        try:
+            coal = pygame.image.load("textures/coal.png").convert_alpha()
+            return pygame.transform.scale(coal, (50, 50))
+        except pygame.error as er:
+            print(f"error loading iron block: {er}")
+            placeholder = pygame.surface((50, 50))
+            placeholder.fill((54, 69, 79))
+            return placeholder
+        
+class Diamond(Block):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.health = 150
+    def load_img(self):
+        try:
+            diamond = pygame.image.load("textures/diamond.png").convert_alpha()
+            return pygame.transform.scale(diamond, (50, 50))
+        except pygame.error as er:
+            print(f"error loading diamond: {er}")
+            placeholder = pygame.surface((50, 50))
+            placeholder.fill(SKY_BLUE)
+
 class Bedrock(Block):
     def __init__(self, x, y):
         super().__init__(x, y)
@@ -239,7 +294,7 @@ class Wood(Block):
         except pygame.error as er:
             print(f"Error loading wood block: {er}")
             placeholder = pygame.Surface((50, 50))
-            placeholder.fill((160, 82, 45))
+            placeholder.fill((161, 102, 47))
             return placeholder
 
 class Leaves(Block):
@@ -254,7 +309,7 @@ class Leaves(Block):
         except pygame.error as er:
             print(f"Error loading leaf block: {er}")
             placeholder = pygame.Surface((50, 50))
-            placeholder.fill((0, 255, 0))
+            placeholder.fill((74, 124, 89))
             return placeholder
 class Tree:
     def __init__(self, x, y, world):
@@ -375,6 +430,12 @@ def draw_hotbar(screen, player):
                 icon_color = (160, 82, 45)
             elif item["type"] == "leaves":
                 icon_color = (0, 200, 0)
+            elif item["type"] == "ironore":
+                icon_color = (74, 75, 76)
+            elif item["type"] == "coal":
+                icon_color = (54, 69, 79)
+            elif item["type"] == "diamond":
+                icon_color = SKY_BLUE
                
             pygame.draw.rect(screen, icon_color, 
                            (slot_x + 5, hotbar_y + 5, 
@@ -482,7 +543,7 @@ while running:
     if player.health <= 0:
         screen.fill(BLACK)
         font = pygame.font.SysFont(None, 72)
-        text = font.render("YOU DIED", True, (255, 0, 0))
+        text = font.render("GET WRECKED LOL", True, (255, 0, 0))
         screen.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2 - text.get_height()//2))
         pygame.display.flip()
         time.sleep(2)
@@ -549,6 +610,15 @@ while running:
                     elif isinstance(block, Leaves):
                         item_type = "leaves"
                         color = (0, 200, 0)
+                    elif isinstance(block, IronOre):
+                        item_type = "ironore"
+                        color = (100, 100, 110)
+                    elif isinstance(block, Coal):
+                        item_type = "coal"
+                        color = (54, 69, 79)
+                    elif isinstance(block, Diamond):
+                        item_type = "diamond"
+                        color = SKY_BLUE
 
                     particles = [Particle(
                         block.rect.centerx + random.randint(-20, 20),
@@ -621,6 +691,12 @@ while running:
                     world.add_block(Wood(grid_x, grid_y))   
                 elif selected_item["type"] == "leaves":
                     world.add_block(Leaves(grid_x, grid_y))   
+                elif selected_item["type"] == "ironore":
+                    world.add_block(IronOre(grid_x, grid_y))                 
+                elif selected_item["type"] == "coal":
+                    world.add_block(Coal(grid_x, grid_y)) 
+                elif selected_item["type"] == "diamond":
+                    world.add_block(Diamond(grid_x, grid_y)) 
 
                 selected_item["count"] -= 1
                 if selected_item["count"] <= 0:
@@ -670,4 +746,3 @@ while running:
     clock.tick(60)
 
 sys.exit(0)
-
