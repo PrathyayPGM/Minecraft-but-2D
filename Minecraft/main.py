@@ -652,7 +652,7 @@ while running:
         pygame.display.flip()
         time.sleep(2)
         running = False
-    if pygame.time.get_ticks() % 1200 < 600: 
+    if pygame.time.get_ticks() % 1200000 < 600000: 
         is_day = True
     else:
         is_day = False
