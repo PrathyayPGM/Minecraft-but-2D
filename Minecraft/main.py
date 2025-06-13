@@ -107,11 +107,11 @@ class World:
                     elif block_type == "Leaves":
                         self.add_block(Leaves(x, y))
                     elif block_type == "IronOre":
-                        self.add_block(Leaves(x, y))
+                        self.add_block(IronOre(x, y))
                     elif block_type == "Coal":
-                        self.add_block(Leaves(x, y))
+                        self.add_block(Coal(x, y))
                     elif block_type == "Diamond":
-                        self.add_block(Leaves(x, y))
+                        self.add_block(Diamond(x, y))
 
         except FileNotFoundError:
             print("No saved world found - generating new one")
@@ -405,6 +405,75 @@ class Player:
                 self.rect.top = block.rect.bottom
                 self.world_pos[1] = self.rect.y  
                 break
+player = Player()
+
+class Zombie:
+    def __init__(self):
+        self.world_pos = [random.randint(1, 999), HEIGHT - 200]
+        self.original_img = self.load_img()
+        self.image = self.original_img
+        self.gravity = 0
+        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 50, 150)
+        self.speed = 2
+        self.health = 10
+        self.max_health = 10
+        self.max_safe_fall = 25
+        self.damage = 0.01
+        self.attack_cooldown = 0
+        self.attack_delay = 1000 
+        self.facing_right = True 
+
+    def load_img(self):
+        try:
+            zombie_img = pygame.image.load("textures/zombie.png").convert_alpha()
+            return pygame.transform.scale(zombie_img, (50, 150))
+        except pygame.error as er:
+            print(f"Error loading image: {er}")
+            placeholder = pygame.Surface((50, 150))
+            placeholder.fill((0, 255, 0))  
+            return placeholder
+    def update(self, ground_blocks):
+        self.world_pos[1] += self.gravity
+        self.gravity += 0.8
+        self.on_ground = False
+        self.rect.x = self.world_pos[0]
+        self.rect.y = self.world_pos[1]
+        player_pos = player.world_pos
+        if self.world_pos[0] < player_pos[0]:  
+            if not self.facing_right:
+                self.facing_right = True
+                self.image = self.original_img  
+            self.world_pos[0] += self.speed
+        else:  
+            if self.facing_right:
+                self.facing_right = False
+                self.image = pygame.transform.flip(self.original_img, True, False)        
+        if self.world_pos[0] < player_pos[0]:
+            self.world_pos[0] += self.speed
+        else:
+            self.world_pos[0] -= self.speed
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= 1
+        if self.rect.colliderect(player.rect):
+            player.health -= self.damage
+            self.attack_cooldown = self.attack_delay
+
+
+        for block in ground_blocks:
+            if self.rect.colliderect(block.rect) and self.gravity >= 0 and self.rect.bottom > block.rect.top:
+                if self.gravity > self.max_safe_fall:
+                    self.health -= (self.gravity - self.max_safe_fall) * 0.2
+                self.on_ground = True
+                self.can_jump = True  
+                self.gravity = 0
+                self.rect.bottom = block.rect.top
+                self.world_pos[1] = self.rect.y  
+                break
+            elif self.gravity < 0 and self.rect.top < block.rect.bottom and self.rect.colliderect(block.rect):
+                self.gravity = 0
+                self.rect.top = block.rect.bottom
+                self.world_pos[1] = self.rect.y  
+                break
 
 
 def draw_hotbar(screen, player):
@@ -470,8 +539,7 @@ def draw_health_bar(screen, player):
     font = pygame.font.SysFont(None, 24)
     health_text = font.render(f"Health: {player.health:.1f}/{player.max_health}", True, WHITE)
     screen.blit(health_text, (health_x + health_height, health_y))
-
-player = Player() 
+zombie = Zombie() 
 world = World()
 world.load()  
 camera = Camera(WIDTH, HEIGHT)
@@ -728,6 +796,9 @@ while running:
         player.image,
         (player.rect.x - camera.camera.x, player.rect.y - camera.camera.y)
     )
+    zombie.load_img()
+    screen.blit(zombie.image, (zombie.rect.x - camera.camera.x, zombie.rect.y - camera.camera.y))
+    zombie.update(nearby_blocks)
     
     draw_hotbar(screen, player)
     draw_health_bar(screen, player)
