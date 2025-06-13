@@ -414,7 +414,7 @@ class Zombie:
         self.image = self.original_img
         self.gravity = 0
         self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 50, 150)
-        self.speed = 2
+        self.speed = 1.5
         self.health = 10
         self.max_health = 10
         self.max_safe_fall = 25
