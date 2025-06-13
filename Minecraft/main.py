@@ -422,6 +422,9 @@ class Zombie:
         self.attack_cooldown = 0
         self.attack_delay = 1000 
         self.facing_right = True 
+        self.knockback = 0 
+        self.knockback_resistance = 0.8  
+        self.knockback_direction = 1
 
     def load_img(self):
         try:
@@ -439,25 +442,35 @@ class Zombie:
         self.rect.x = self.world_pos[0]
         self.rect.y = self.world_pos[1]
         player_pos = player.world_pos
-        if self.world_pos[0] < player_pos[0]:  
-            if not self.facing_right:
-                self.facing_right = True
-                self.image = self.original_img  
-            self.world_pos[0] += self.speed
-        else:  
-            if self.facing_right:
-                self.facing_right = False
-                self.image = pygame.transform.flip(self.original_img, True, False)        
-        if self.world_pos[0] < player_pos[0]:
-            self.world_pos[0] += self.speed
-        else:
-            self.world_pos[0] -= self.speed
-        if self.attack_cooldown > 0:
-            self.attack_cooldown -= 1
-        if self.rect.colliderect(player.rect):
-            player.health -= self.damage
-            self.attack_cooldown = self.attack_delay
+        if self.knockback > 0:
+            self.world_pos[0] += self.knockback_direction * self.knockback
+            self.knockback *= self.knockback_resistance  
+            if self.knockback < 0.5:  
+                self.knockback = 0
 
+        if self.knockback <= 0:
+            if self.world_pos[0] < player_pos[0]:  
+                if not self.facing_right:
+                    self.facing_right = True
+                    self.image = self.original_img  
+                self.world_pos[0] += self.speed
+            else:  
+                if self.facing_right:
+                    self.facing_right = False
+                    self.image = pygame.transform.flip(self.original_img, True, False)        
+            if self.world_pos[0] < player_pos[0]:
+                self.world_pos[0] += self.speed
+            else:
+                self.world_pos[0] -= self.speed
+            if self.attack_cooldown > 0:
+                self.attack_cooldown -= 1
+            if self.rect.colliderect(player.rect):
+                player.health -= self.damage
+                self.attack_cooldown = self.attack_delay
+                if self.world_pos[0] < player_pos[0]:
+                    self.world_pos[0] += self.speed
+                else:
+                    self.world_pos[0] -= self.speed
 
         for block in ground_blocks:
             if self.rect.colliderect(block.rect) and self.gravity >= 0 and self.rect.bottom > block.rect.top:
@@ -474,7 +487,13 @@ class Zombie:
                 self.rect.top = block.rect.bottom
                 self.world_pos[1] = self.rect.y  
                 break
-
+    
+    def take_damage(self, amount):
+        self.health -= amount
+        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
+        self.knockback = 15  
+        self.hit_cooldown = 10
+        return self.health <= 0 
 
 def draw_hotbar(screen, player):
     hotbar_x = (WIDTH - HOTBAR_WIDTH) // 2
@@ -592,6 +611,15 @@ while running:
                 player.selected_slot = (player.selected_slot - 1) % HOTBAR_SLOTS
             elif event.y < 0: 
                 player.selected_slot = (player.selected_slot + 1) % HOTBAR_SLOTS
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  
+            mouse_pos = pygame.mouse.get_pos()
+            world_mouse_pos = (mouse_pos[0] + camera.camera.x, 
+                            mouse_pos[1] + camera.camera.y)
+            
+            if zombie.rect.collidepoint(world_mouse_pos):
+                if zombie.take_damage(1): 
+                    zombie = Zombie()
+
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_LEFT] or keys[pygame.K_a]:
