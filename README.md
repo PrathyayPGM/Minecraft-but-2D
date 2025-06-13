@@ -7,3 +7,4 @@ By the way - here an alert
 so wait some more time
 
 If you want to play the still unfinished version, click on download zipped file in the "code" button, then click extract all, open it and run the main code
+Ps. I removed the c++, for now...
