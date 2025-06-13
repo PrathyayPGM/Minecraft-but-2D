@@ -13,6 +13,9 @@ WHITE = (255, 255, 255)
 SKY_BLUE = (135, 206, 235)
 MAX_FALL_DISTANCE = 1000
 BLOCK_HEALTH = 100
+DAY_COLOR = (135, 206, 235)  
+NIGHT_COLOR = (20, 20, 50)    
+is_day = True  
 
 HOTBAR_SLOTS = 9  
 SLOT_SIZE = 40    
@@ -558,7 +561,10 @@ def draw_health_bar(screen, player):
     font = pygame.font.SysFont(None, 24)
     health_text = font.render(f"Health: {player.health:.1f}/{player.max_health}", True, WHITE)
     screen.blit(health_text, (health_x + health_height, health_y))
-zombie = Zombie() 
+zombies = []  
+last_spawn_time = 0
+spawn_interval = 300  
+max_zombies = 5 
 world = World()
 world.load()  
 camera = Camera(WIDTH, HEIGHT)
@@ -606,19 +612,16 @@ while running:
                 world.save()
                 running = False
         
-        if event.type == pygame.MOUSEWHEEL:
-            if event.y > 0:  
-                player.selected_slot = (player.selected_slot - 1) % HOTBAR_SLOTS
-            elif event.y < 0: 
-                player.selected_slot = (player.selected_slot + 1) % HOTBAR_SLOTS
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mouse_pos = pygame.mouse.get_pos()
-            world_mouse_pos = (mouse_pos[0] + camera.camera.x, 
+            world_mouse_pos = (mouse_pos[0] + camera.camera.x,
                             mouse_pos[1] + camera.camera.y)
             
-            if zombie.rect.collidepoint(world_mouse_pos):
-                if zombie.take_damage(1): 
-                    zombie = Zombie()
+            for zombie in zombies[:]:
+                if zombie.rect.collidepoint(world_mouse_pos):
+                    if zombie.take_damage(10): 
+                        zombies.remove(zombie)
+                    break
 
 
     keys = pygame.key.get_pressed()
@@ -649,8 +652,19 @@ while running:
         pygame.display.flip()
         time.sleep(2)
         running = False
+    if pygame.time.get_ticks() % 1200 < 600: 
+        is_day = True
+    else:
+        is_day = False
+    current_time = pygame.time.get_ticks()
 
-    nearby_blocks = world.get_nearby_blocks((player.rect.x, player.rect.y), 1000)
+    if not is_day and current_time - last_spawn_time > spawn_interval and len(zombies) < max_zombies:
+        zombies.append(Zombie())
+        last_spawn_time = current_time
+
+    if is_day and zombies:
+        zombies.clear()
+    
     
     # mining/placing blocks
     mouse_buttons = pygame.mouse.get_pressed()
@@ -804,12 +818,12 @@ while running:
                     selected_item["type"] = None
                 
                 place_sound.play()
-
+    nearby_blocks = world.get_nearby_blocks((player.rect.x, player.rect.y), 1000)
     player.update(nearby_blocks)
     camera.update(player)
     world.update_particles()
 
-    screen.fill(SKY_BLUE)
+    screen.fill(DAY_COLOR if is_day else NIGHT_COLOR)
 
     for block in nearby_blocks:
         if (block.rect.right > camera.camera.left and 
@@ -824,10 +838,10 @@ while running:
         player.image,
         (player.rect.x - camera.camera.x, player.rect.y - camera.camera.y)
     )
-    zombie.load_img()
-    screen.blit(zombie.image, (zombie.rect.x - camera.camera.x, zombie.rect.y - camera.camera.y))
-    zombie.update(nearby_blocks)
-    
+    for zombie in zombies:
+        zombie.update(nearby_blocks)
+        screen.blit(zombie.image, (zombie.rect.x - camera.camera.x, zombie.rect.y - camera.camera.y))
+        
     draw_hotbar(screen, player)
     draw_health_bar(screen, player)
 
