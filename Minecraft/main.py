@@ -516,26 +516,29 @@ def draw_hotbar(screen, player):
         
         item = player.inventory[slot]
         if item["type"]:
+            # Create a temporary block to get its image
+            temp_block = None
             if item["type"] == "dirt":
-                icon_color = (139, 69, 19)
+                temp_block = Dirtblock(0, 0)
             elif item["type"] == "stone":
-                icon_color = (128, 128, 128)
+                temp_block = Stoneblock(0, 0)
             elif item["type"] == "grass":
-                icon_color = (0, 255, 0)
+                temp_block = Grassblock(0, 0)
             elif item["type"] == "wood":
-                icon_color = (160, 82, 45)
+                temp_block = Wood(0, 0)
             elif item["type"] == "leaves":
-                icon_color = (0, 200, 0)
+                temp_block = Leaves(0, 0)
             elif item["type"] == "ironore":
-                icon_color = (74, 75, 76)
+                temp_block = IronOre(0, 0)
             elif item["type"] == "coal":
-                icon_color = (54, 69, 79)
+                temp_block = Coal(0, 0)
             elif item["type"] == "diamond":
-                icon_color = SKY_BLUE
-               
-            pygame.draw.rect(screen, icon_color, 
-                           (slot_x + 5, hotbar_y + 5, 
-                            SLOT_SIZE - 10, SLOT_SIZE - 10))
+                temp_block = Diamond(0, 0)
+            
+            if temp_block:
+                # Scale down the image to fit the slot
+                scaled_img = pygame.transform.scale(temp_block.image, (SLOT_SIZE - 10, SLOT_SIZE - 10))
+                screen.blit(scaled_img, (slot_x + 5, hotbar_y + 5))
             
             font = pygame.font.SysFont(None, 20)
             count_text = font.render(str(item["count"]), True, WHITE)
@@ -619,7 +622,7 @@ while running:
             
             for zombie in zombies[:]:
                 if zombie.rect.collidepoint(world_mouse_pos):
-                    if zombie.take_damage(10): 
+                    if zombie.take_damage(1): 
                         zombies.remove(zombie)
                     break
 
