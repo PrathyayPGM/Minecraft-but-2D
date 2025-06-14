@@ -115,6 +115,8 @@ class World:
                         self.add_block(Coal(x, y))
                     elif block_type == "Diamond":
                         self.add_block(Diamond(x, y))
+                    elif block_type == "Bedrock":
+                        self.add_block(Bedrock(x, y))
 
         except FileNotFoundError:
             print("No saved world found - generating new one")
@@ -375,6 +377,7 @@ class Player:
         self.max_mine_distance = 250
         self.max_safe_fall = 25 
         self.fall_damage = 0  
+        self.attack = 1
                 
     def load_img(self): 
         try:
@@ -496,7 +499,124 @@ class Zombie:
         self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
         self.knockback = 15  
         self.hit_cooldown = 10
-        return self.health <= 0 
+        return self.health <= 0
+
+class Pig:
+    def __init__(self):
+        self.world_pos = [random.randint(1, 999), HEIGHT - 200]
+        self.original_img = self.load_img()
+        self.image = self.original_img
+        self.gravity = 0
+        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 50, 59.375)
+        self.speed = random.uniform(1.0, 3.0)
+        self.health = 5
+        self.max_health = 5 
+        self.facing_right = random.choice([True, False]) 
+        self.max_safe_fall = 15  
+        self.knockback = 0 
+        self.knockback_resistance = 0.8  
+        self.knockback_direction = 1
+        self.on_ground = False
+        self.hit_cooldown = 0
+        self.move_direction = 1 if self.facing_right else -1
+        self.move_timer = random.randint(120, 240) 
+        self.idle_timer = 0
+        self.current_state = "wandering"  
+        self.jump_power = -15  
+        self.can_jump = True
+        self.jump_cooldown = 0
+
+    def load_img(self):
+        try:
+            pig_img = pygame.image.load("textures/legend.png").convert_alpha()
+            return pygame.transform.scale(pig_img, (50, 59.375))
+        except pygame.error as er:
+            print(f"Error loading image: {er}")
+            placeholder = pygame.Surface((50, 59.375))
+            placeholder.fill((255, 192, 203))  
+            return placeholder
+
+    def update(self, ground_blocks):
+        if self.knockback > 0:
+            self.world_pos[0] += self.knockback_direction * self.knockback
+            self.knockback *= self.knockback_resistance
+            if abs(self.knockback) < 0.5:
+                self.knockback = 0
+            return  
+
+        if self.current_state == "wandering":
+            self.move_timer -= 1
+            if self.move_timer <= 0:
+                choice = random.random()
+                if choice < 0.3:  
+                    self.current_state = "idle"
+                    self.idle_timer = random.randint(60, 120)
+                elif choice < 0.6:  
+                    self.move_direction *= -1
+                    self.move_timer = random.randint(120, 240)
+                else:  
+                    self.move_timer = random.randint(60, 180)
+            
+            self.world_pos[0] += self.move_direction * self.speed
+            
+            if self.on_ground and random.random() < 0.005 and self.jump_cooldown <= 0:
+                self.gravity = self.jump_power
+                self.on_ground = False
+                self.jump_cooldown = 60
+            
+        elif self.current_state == "idle":
+            self.idle_timer -= 1
+            if self.idle_timer <= 0:
+                self.current_state = "wandering"
+                self.move_timer = random.randint(120, 240)
+                self.move_direction = random.choice([self.move_direction, -self.move_direction])
+        
+        if self.jump_cooldown > 0:
+            self.jump_cooldown -= 1
+
+        self.gravity = min(self.gravity + 0.8, 20)
+        self.world_pos[1] += self.gravity
+
+        self.rect.x = self.world_pos[0]
+        self.rect.y = self.world_pos[1]
+
+        self.on_ground = False
+
+        for block in ground_blocks:
+            if self.rect.colliderect(block.rect):
+                if self.gravity >= 0 and self.rect.bottom > block.rect.top:
+                    if self.gravity > self.max_safe_fall:
+                        self.health -= (self.gravity - self.max_safe_fall) * 0.2
+                    self.on_ground = True
+                    self.can_jump = True
+                    self.gravity = 0
+                    self.rect.bottom = block.rect.top
+                    self.world_pos[1] = self.rect.y
+
+                elif self.gravity < 0 and self.rect.top < block.rect.bottom:
+                    self.gravity = 0
+                    self.rect.top = block.rect.bottom
+                    self.world_pos[1] = self.rect.y
+
+        if self.move_direction > 0:
+            self.facing_right = True
+        elif self.move_direction < 0:
+            self.facing_right = False
+        self.image = pygame.transform.flip(self.original_img, not self.facing_right, False)
+
+        if self.hit_cooldown > 0:
+            self.hit_cooldown -= 1
+
+    def take_damage(self, amount):
+        self.health -= amount
+        self.knockback_direction = 1 if player.world_pos[0] < self.rect.centerx else -1
+        self.knockback = 15  
+        self.hit_cooldown = 10
+        self.move_direction = -self.knockback_direction
+        self.current_state = "wandering"
+        self.move_timer = 180  
+        return self.health <= 0
+
 
 def draw_hotbar(screen, player):
     hotbar_x = (WIDTH - HOTBAR_WIDTH) // 2
@@ -516,7 +636,6 @@ def draw_hotbar(screen, player):
         
         item = player.inventory[slot]
         if item["type"]:
-            # Create a temporary block to get its image
             temp_block = None
             if item["type"] == "dirt":
                 temp_block = Dirtblock(0, 0)
@@ -536,7 +655,7 @@ def draw_hotbar(screen, player):
                 temp_block = Diamond(0, 0)
             
             if temp_block:
-                # Scale down the image to fit the slot
+
                 scaled_img = pygame.transform.scale(temp_block.image, (SLOT_SIZE - 10, SLOT_SIZE - 10))
                 screen.blit(scaled_img, (slot_x + 5, hotbar_y + 5))
             
@@ -565,9 +684,11 @@ def draw_health_bar(screen, player):
     health_text = font.render(f"Health: {player.health:.1f}/{player.max_health}", True, WHITE)
     screen.blit(health_text, (health_x + health_height, health_y))
 zombies = []  
+pigs = []
 last_spawn_time = 0
 spawn_interval = 300  
 max_zombies = 5 
+max_pigs = 5
 world = World()
 world.load()  
 camera = Camera(WIDTH, HEIGHT)
@@ -622,8 +743,13 @@ while running:
             
             for zombie in zombies[:]:
                 if zombie.rect.collidepoint(world_mouse_pos):
-                    if zombie.take_damage(1): 
+                    if zombie.take_damage(player.attack): 
                         zombies.remove(zombie)
+                    break
+            for pig in pigs[:]:
+                if pig.rect.collidepoint(world_mouse_pos):
+                    if pig.take_damage(player.attack):
+                        pigs.remove(pig)
                     break
 
 
@@ -668,6 +794,12 @@ while running:
     if is_day and zombies:
         zombies.clear()
     
+    if is_day and current_time - last_spawn_time > spawn_interval and len(pigs) < max_pigs:
+        pigs.append(Pig())
+        last_spawn_time = current_time
+    
+    if not is_day and pigs:
+        pigs.clear()
     
     # mining/placing blocks
     mouse_buttons = pygame.mouse.get_pressed()
@@ -844,6 +976,10 @@ while running:
     for zombie in zombies:
         zombie.update(nearby_blocks)
         screen.blit(zombie.image, (zombie.rect.x - camera.camera.x, zombie.rect.y - camera.camera.y))
+
+    for pig in pigs:
+        pig.update(nearby_blocks)
+        screen.blit(pig.image, (pig.rect.x - camera.camera.x, pig.rect.y - camera.camera.y))
         
     draw_hotbar(screen, player)
     draw_health_bar(screen, player)
