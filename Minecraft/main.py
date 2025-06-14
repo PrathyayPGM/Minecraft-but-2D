@@ -507,7 +507,7 @@ class Pig:
         self.original_img = self.load_img()
         self.image = self.original_img
         self.gravity = 0
-        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 50, 59.375)
+        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 50 * 0.9, 59.375)
         self.speed = random.uniform(1.0, 3.0)
         self.health = 5
         self.max_health = 5 
@@ -529,20 +529,19 @@ class Pig:
     def load_img(self):
         try:
             pig_img = pygame.image.load("textures/legend.png").convert_alpha()
-            return pygame.transform.scale(pig_img, (50, 59.375 ))
+            return pygame.transform.scale(pig_img, (50 * 0.9, 59.375 ))
         except pygame.error as er:
             print(f"Error loading image: {er}")
-            placeholder = pygame.Surface((50, 59.375))
+            placeholder = pygame.Surface((50 * 0.9, 59.375))
             placeholder.fill((255, 192, 203))  
             return placeholder
 
     def update(self, ground_blocks):
         if self.knockback > 0:
             self.world_pos[0] += self.knockback_direction * self.knockback
-            self.knockback *= self.knockback_resistance
-            if abs(self.knockback) < 0.5:
+            self.knockback *= self.knockback_resistance  
+            if self.knockback < 0.5:  
                 self.knockback = 0
-            return  
 
         if self.current_state == "wandering":
             self.move_timer -= 1
@@ -603,12 +602,9 @@ class Pig:
 
     def take_damage(self, amount):
         self.health -= amount
-        self.knockback_direction = 1 if player.world_pos[0] < self.rect.centerx else -1
+        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
         self.knockback = 15  
         self.hit_cooldown = 10
-        self.move_direction = -self.knockback_direction
-        self.current_state = "wandering"
-        self.move_timer = 180  
         return self.health <= 0
 
 class Spider:
@@ -698,9 +694,142 @@ class Spider:
         self.knockback = 15  
         self.hit_cooldown = 10
         return self.health <= 0
+
+class Creeper:
+    def __init__(self):
+        self.world_pos = [random.randint(1, 999), HEIGHT - 200]
+        self.original_img = self.load_img()
+        self.image = self.original_img
+        self.gravity = 0
+        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 100, 50)
+        self.speed = 1.5
+        self.health = 10
+        self.max_health = 10
+        self.max_safe_fall = 25
+        self.damage = 0.01
+        self.attack_cooldown = 0
+        self.attack_delay = 1000 
+        self.facing_right = True 
+        self.knockback = 0 
+        self.knockback_resistance = 0.8  
+        self.knockback_direction = 1
+        self.on_ground = False
+        self.can_jump = False
+        self.explosion_radius = 200  
+        self.explosion_damage = 0.5
+        self.is_exploding = False
+        self.explosion_timer = 0
+        self.max_explosion_timer = 60 
         
+    def load_img(self):        
+        try:
+            creeper_img = pygame.image.load("textures/creeper.png").convert_alpha()
+            return pygame.transform.scale(creeper_img, (100, 50))
+        except pygame.error as er:
+            print(f"Error loading image: {er}")
+            placeholder = pygame.Surface((100, 50))
+            placeholder.fill((0, 200, 0))  
+            return placeholder
+            
+    def explode(self, player, world) -> bool:
+        if self.health <= 0 or self.is_exploding:
+            for _ in range(30):
+                world.add_particles([Particle(
+                    self.rect.centerx + random.randint(-20, 20),
+                    self.rect.centery + random.randint(-20, 20),
+                    (0, 255, 0))
+                ])
+            
+            distance = pygame.math.Vector2(player.rect.center).distance_to(
+                pygame.math.Vector2(self.rect.center))
+            if distance < self.explosion_radius:
+                player.health -= self.explosion_damage * (1 - distance/self.explosion_radius)
+            
+            blocks_nearby = world.get_nearby_blocks(self.rect.center, self.explosion_radius)
+            for block in blocks_nearby[:]:
+                if not isinstance(block, Bedrock):
+                    distance = pygame.math.Vector2(block.rect.center).distance_to(
+                        pygame.math.Vector2(self.rect.center))
+                    if distance < self.explosion_radius:
+                        world.blocks.remove(block)
+                        chunk_x = block.rect.x // (16*50)
+                        chunk_y = block.rect.y // (16*50)
+                        if (chunk_x, chunk_y) in world.chunks:
+                            world.chunks[(chunk_x, chunk_y)].remove(block)
+            
+            return True
+        return False
+        
+    def take_damage(self, amount: float, direction: int) -> bool:
+        self.health -= amount
+        self.knockback = 15
+        self.knockback_direction = direction
+        return self.health <= 0
+        
+    def update(self, ground_blocks, player, world):
+        if self.rect.colliderect(player.rect) and not self.is_exploding:
+            self.is_exploding = True
 
+        if self.is_exploding:
+            self.explosion_timer += 1
+            if self.explosion_timer > self.max_explosion_timer - 20:
+                if self.explosion_timer % 5 == 0:
+                    self.image.fill((255, 255, 255), special_flags=pygame.BLEND_ADD)
+            
+            if self.explosion_timer >= self.max_explosion_timer:
+                self.explode(player, world)
+                return False  
 
+        if not self.is_exploding:
+            self.world_pos[1] += self.gravity
+            self.gravity += 0.8
+            self.on_ground = False
+            
+        self.rect.x = self.world_pos[0]
+        self.rect.y = self.world_pos[1]
+
+        if self.knockback > 0:
+            self.world_pos[0] += self.knockback_direction * self.knockback
+            self.knockback *= self.knockback_resistance  
+            if self.knockback < 0.5:  
+                self.knockback = 0
+
+        if self.knockback <= 0 and not self.is_exploding:
+            player_pos = player.world_pos
+            if self.world_pos[0] < player_pos[0]:  
+                if not self.facing_right:
+                    self.facing_right = True
+                    self.image = self.original_img  
+                self.world_pos[0] += self.speed
+            else:  
+                if self.facing_right:
+                    self.facing_right = False
+                    self.image = pygame.transform.flip(self.original_img, True, False)        
+                self.world_pos[0] -= self.speed
+
+            if self.attack_cooldown > 0:
+                self.attack_cooldown -= 1
+
+        for block in ground_blocks:
+            if self.rect.colliderect(block.rect):
+                if self.gravity >= 0 and self.rect.bottom > block.rect.top:
+                    if self.gravity > self.max_safe_fall:
+                        self.take_damage((self.gravity - self.max_safe_fall) * 0.2, 0)
+                    
+                    self.on_ground = True
+                    self.can_jump = True  
+                    self.gravity = 0
+                    self.rect.bottom = block.rect.top
+                    self.world_pos[1] = self.rect.y  
+                    break
+                elif self.gravity < 0 and self.rect.top < block.rect.bottom:
+                    self.gravity = 0
+                    self.rect.top = block.rect.bottom
+                    self.world_pos[1] = self.rect.y  
+                    break
+        
+        return True
+        
 def draw_hotbar(screen, player):
     hotbar_x = (WIDTH - HOTBAR_WIDTH) // 2
     hotbar_y = HEIGHT - HOTBAR_HEIGHT - HOTBAR_MARGIN
@@ -767,13 +896,15 @@ def draw_health_bar(screen, player):
     health_text = font.render(f"Health: {player.health:.1f}/{player.max_health}", True, WHITE)
     screen.blit(health_text, (health_x + health_height, health_y))
 zombies = []  
-spiders = []  
+spiders = []
+creepers = []  
 pigs = []
 last_spawn_time = 0
 spawn_interval = 300  
 max_spiders = 3
 max_zombies = 3
 max_pigs = 3
+max_creepers = 3
 world = World()
 world.load()  
 camera = Camera(WIDTH, HEIGHT)
@@ -891,6 +1022,12 @@ while running:
     if is_day and spiders:
         spiders.clear()
 
+    if not is_day and current_time - last_spawn_time > spawn_interval and len(creepers) < max_creepers:
+        creepers.append(Creeper())
+        last_spawn_time = current_time
+
+    if is_day and creepers:
+        creepers.clear()
 
     if is_day and current_time - last_spawn_time > spawn_interval and len(pigs) < max_pigs:
         pigs.append(Pig())
@@ -1079,6 +1216,11 @@ while running:
         spider.update(nearby_blocks)
         screen.blit(spider.image, (spider.rect.x - camera.camera.x, spider.rect.y - camera.camera.y))
 
+    for creeper in creepers[:]:    
+        if not creeper.update(nearby_blocks, player, world):
+            creepers.remove(creeper)
+        else:
+            screen.blit(creeper.image, (creeper.rect.x - camera.camera.x, creeper.rect.y - camera.camera.y))
 
     for pig in pigs:
         pig.update(nearby_blocks)
