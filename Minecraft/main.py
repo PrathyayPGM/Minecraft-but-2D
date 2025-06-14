@@ -529,7 +529,7 @@ class Pig:
     def load_img(self):
         try:
             pig_img = pygame.image.load("textures/legend.png").convert_alpha()
-            return pygame.transform.scale(pig_img, (50, 59.375))
+            return pygame.transform.scale(pig_img, (50, 59.375 ))
         except pygame.error as er:
             print(f"Error loading image: {er}")
             placeholder = pygame.Surface((50, 59.375))
@@ -559,10 +559,6 @@ class Pig:
             
             self.world_pos[0] += self.move_direction * self.speed
             
-            if self.on_ground and random.random() < 0.005 and self.jump_cooldown <= 0:
-                self.gravity = self.jump_power
-                self.on_ground = False
-                self.jump_cooldown = 60
             
         elif self.current_state == "idle":
             self.idle_timer -= 1
@@ -571,8 +567,6 @@ class Pig:
                 self.move_timer = random.randint(120, 240)
                 self.move_direction = random.choice([self.move_direction, -self.move_direction])
         
-        if self.jump_cooldown > 0:
-            self.jump_cooldown -= 1
 
         self.gravity = min(self.gravity + 0.8, 20)
         self.world_pos[1] += self.gravity
@@ -583,20 +577,20 @@ class Pig:
         self.on_ground = False
 
         for block in ground_blocks:
-            if self.rect.colliderect(block.rect):
-                if self.gravity >= 0 and self.rect.bottom > block.rect.top:
-                    if self.gravity > self.max_safe_fall:
-                        self.health -= (self.gravity - self.max_safe_fall) * 0.2
-                    self.on_ground = True
-                    self.can_jump = True
-                    self.gravity = 0
-                    self.rect.bottom = block.rect.top
-                    self.world_pos[1] = self.rect.y
-
-                elif self.gravity < 0 and self.rect.top < block.rect.bottom:
-                    self.gravity = 0
-                    self.rect.top = block.rect.bottom
-                    self.world_pos[1] = self.rect.y
+            if self.rect.colliderect(block.rect) and self.gravity >= 0 and self.rect.bottom > block.rect.top:
+                if self.gravity > self.max_safe_fall:
+                    self.health -= (self.gravity - self.max_safe_fall) * 0.2
+                self.on_ground = True
+                self.can_jump = True  
+                self.gravity = 0
+                self.rect.bottom = block.rect.top
+                self.world_pos[1] = self.rect.y  
+                break
+            elif self.gravity < 0 and self.rect.top < block.rect.bottom and self.rect.colliderect(block.rect):
+                self.gravity = 0
+                self.rect.top = block.rect.bottom
+                self.world_pos[1] = self.rect.y  
+                break
 
         if self.move_direction > 0:
             self.facing_right = True
@@ -616,6 +610,95 @@ class Pig:
         self.current_state = "wandering"
         self.move_timer = 180  
         return self.health <= 0
+
+class Spider:
+    def __init__(self):
+        self.world_pos = [random.randint(1, 999), HEIGHT - 200]
+        self.original_img = self.load_img()
+        self.image = self.original_img
+        self.gravity = 0
+        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 150, 50)
+        self.speed = 1.5
+        self.health = 10
+        self.max_health = 10
+        self.max_safe_fall = 25
+        self.damage = 0.01
+        self.attack_cooldown = 0
+        self.attack_delay = 1000 
+        self.facing_right = True 
+        self.knockback = 0 
+        self.knockback_resistance = 0.8  
+        self.knockback_direction = 1
+
+    def load_img(self):
+        try:
+            spider_img = pygame.image.load("textures/spider.png").convert_alpha()
+            return pygame.transform.scale(spider_img, (150, 50))
+        except pygame.error as er:
+            print(f"Error loading image: {er}")
+            placeholder = pygame.Surface((150, 50))
+            placeholder.fill((255, 0, 0))  
+            return placeholder
+    def update(self, ground_blocks):
+        self.world_pos[1] += self.gravity
+        self.gravity += 0.8
+        self.on_ground = False
+        self.rect.x = self.world_pos[0]
+        self.rect.y = self.world_pos[1]
+        player_pos = player.world_pos
+        if self.knockback > 0:
+            self.world_pos[0] += self.knockback_direction * self.knockback
+            self.knockback *= self.knockback_resistance  
+            if self.knockback < 0.5:  
+                self.knockback = 0
+
+        if self.knockback <= 0:
+            if self.world_pos[0] < player_pos[0]:  
+                if not self.facing_right:
+                    self.facing_right = True
+                    self.image = self.original_img  
+                self.world_pos[0] += self.speed
+            else:  
+                if self.facing_right:
+                    self.facing_right = False
+                    self.image = pygame.transform.flip(self.original_img, True, False)        
+            if self.world_pos[0] < player_pos[0]:
+                self.world_pos[0] += self.speed
+            else:
+                self.world_pos[0] -= self.speed
+            if self.attack_cooldown > 0:
+                self.attack_cooldown -= 1
+            if self.rect.colliderect(player.rect):
+                player.health -= self.damage
+                self.attack_cooldown = self.attack_delay
+                if self.world_pos[0] < player_pos[0]:
+                    self.world_pos[0] += self.speed
+                else:
+                    self.world_pos[0] -= self.speed
+
+        for block in ground_blocks:
+            if self.rect.colliderect(block.rect) and self.gravity >= 0 and self.rect.bottom > block.rect.top:
+                if self.gravity > self.max_safe_fall:
+                    self.health -= (self.gravity - self.max_safe_fall) * 0.2
+                self.on_ground = True
+                self.can_jump = True  
+                self.gravity = 0
+                self.rect.bottom = block.rect.top
+                self.world_pos[1] = self.rect.y  
+                break
+            elif self.gravity < 0 and self.rect.top < block.rect.bottom and self.rect.colliderect(block.rect):
+                self.gravity = 0
+                self.rect.top = block.rect.bottom
+                self.world_pos[1] = self.rect.y  
+                break
+    
+    def take_damage(self, amount):
+        self.health -= amount
+        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
+        self.knockback = 15  
+        self.hit_cooldown = 10
+        return self.health <= 0
+        
 
 
 def draw_hotbar(screen, player):
@@ -684,11 +767,13 @@ def draw_health_bar(screen, player):
     health_text = font.render(f"Health: {player.health:.1f}/{player.max_health}", True, WHITE)
     screen.blit(health_text, (health_x + health_height, health_y))
 zombies = []  
+spiders = []  
 pigs = []
 last_spawn_time = 0
 spawn_interval = 300  
-max_zombies = 5 
-max_pigs = 5
+max_spiders = 3
+max_zombies = 3
+max_pigs = 3
 world = World()
 world.load()  
 camera = Camera(WIDTH, HEIGHT)
@@ -751,6 +836,11 @@ while running:
                     if pig.take_damage(player.attack):
                         pigs.remove(pig)
                     break
+            for spider in spiders[:]:
+                if spider.rect.collidepoint(world_mouse_pos):
+                    if spider.take_damage(player.attack):
+                        spiders.remove(spider)
+                    break
 
 
     keys = pygame.key.get_pressed()
@@ -781,7 +871,7 @@ while running:
         pygame.display.flip()
         time.sleep(2)
         running = False
-    if pygame.time.get_ticks() % 1200000 < 600000: 
+    if pygame.time.get_ticks() % 120000 < 60000: 
         is_day = True
     else:
         is_day = False
@@ -793,7 +883,15 @@ while running:
 
     if is_day and zombies:
         zombies.clear()
-    
+
+    if not is_day and current_time - last_spawn_time > spawn_interval and len(spiders) < max_spiders:
+        spiders.append(Spider())
+        last_spawn_time = current_time
+
+    if is_day and spiders:
+        spiders.clear()
+
+
     if is_day and current_time - last_spawn_time > spawn_interval and len(pigs) < max_pigs:
         pigs.append(Pig())
         last_spawn_time = current_time
@@ -976,6 +1074,11 @@ while running:
     for zombie in zombies:
         zombie.update(nearby_blocks)
         screen.blit(zombie.image, (zombie.rect.x - camera.camera.x, zombie.rect.y - camera.camera.y))
+
+    for spider in spiders:
+        spider.update(nearby_blocks)
+        screen.blit(spider.image, (spider.rect.x - camera.camera.x, spider.rect.y - camera.camera.y))
+
 
     for pig in pigs:
         pig.update(nearby_blocks)
