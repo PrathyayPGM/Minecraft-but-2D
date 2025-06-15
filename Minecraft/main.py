@@ -442,6 +442,8 @@ class Zombie:
             placeholder.fill((0, 255, 0))  
             return placeholder
     def update(self, ground_blocks):
+        player_pos = player.world_pos
+        player_distance = abs(player_pos[0] - self.world_pos[0])
         self.world_pos[1] += self.gravity
         self.gravity += 0.8
         self.on_ground = False
@@ -464,19 +466,21 @@ class Zombie:
                 if self.facing_right:
                     self.facing_right = False
                     self.image = pygame.transform.flip(self.original_img, True, False)        
-            if self.world_pos[0] < player_pos[0]:
-                self.world_pos[0] += self.speed
-            else:
-                self.world_pos[0] -= self.speed
-            if self.attack_cooldown > 0:
-                self.attack_cooldown -= 1
-            if self.rect.colliderect(player.rect):
-                player.health -= self.damage
-                self.attack_cooldown = self.attack_delay
+            
+            if player_distance <= 250:
                 if self.world_pos[0] < player_pos[0]:
                     self.world_pos[0] += self.speed
                 else:
                     self.world_pos[0] -= self.speed
+                if self.attack_cooldown > 0:
+                    self.attack_cooldown -= 1
+                if self.rect.colliderect(player.rect):
+                    player.health -= self.damage
+                    self.attack_cooldown = self.attack_delay
+                    if self.world_pos[0] < player_pos[0]:
+                        self.world_pos[0] += self.speed
+                    else:
+                        self.world_pos[0] -= self.speed
 
         for block in ground_blocks:
             if self.rect.colliderect(block.rect) and self.gravity >= 0 and self.rect.bottom > block.rect.top:
@@ -636,6 +640,8 @@ class Spider:
             placeholder.fill((255, 0, 0))  
             return placeholder
     def update(self, ground_blocks):
+        player_pos = player.world_pos
+        player_distance = abs(player_pos[0] - self.world_pos[0])
         self.world_pos[1] += self.gravity
         self.gravity += 0.8
         self.on_ground = False
@@ -657,20 +663,21 @@ class Spider:
             else:  
                 if self.facing_right:
                     self.facing_right = False
-                    self.image = pygame.transform.flip(self.original_img, True, False)        
-            if self.world_pos[0] < player_pos[0]:
-                self.world_pos[0] += self.speed
-            else:
-                self.world_pos[0] -= self.speed
-            if self.attack_cooldown > 0:
-                self.attack_cooldown -= 1
-            if self.rect.colliderect(player.rect):
-                player.health -= self.damage
-                self.attack_cooldown = self.attack_delay
+                    self.image = pygame.transform.flip(self.original_img, True, False)
+            if player_distance <= 250:        
                 if self.world_pos[0] < player_pos[0]:
                     self.world_pos[0] += self.speed
                 else:
                     self.world_pos[0] -= self.speed
+                if self.attack_cooldown > 0:
+                    self.attack_cooldown -= 1
+                if self.rect.colliderect(player.rect):
+                    player.health -= self.damage
+                    self.attack_cooldown = self.attack_delay
+                    if self.world_pos[0] < player_pos[0]:
+                        self.world_pos[0] += self.speed
+                    else:
+                        self.world_pos[0] -= self.speed
 
         for block in ground_blocks:
             if self.rect.colliderect(block.rect) and self.gravity >= 0 and self.rect.bottom > block.rect.top:
@@ -701,7 +708,7 @@ class Creeper:
         self.original_img = self.load_img()
         self.image = self.original_img
         self.gravity = 0
-        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 100, 50)
+        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 59.375 * 2, (50 * 0.9) * 2)
         self.speed = 1.5
         self.health = 10
         self.max_health = 10
@@ -724,10 +731,10 @@ class Creeper:
     def load_img(self):        
         try:
             creeper_img = pygame.image.load("textures/creeper.png").convert_alpha()
-            return pygame.transform.scale(creeper_img, (100, 50))
+            return pygame.transform.scale(creeper_img, (59.375 * 2, (50 * 0.9) *2))
         except pygame.error as er:
             print(f"Error loading image: {er}")
-            placeholder = pygame.Surface((100, 50))
+            placeholder = pygame.Surface(( 59.375 * 2, (50 * 0.9) * 2))
             placeholder.fill((0, 200, 0))  
             return placeholder
             
@@ -1245,6 +1252,6 @@ while running:
                          block_rect.width * progress_pct, 5))
     
     pygame.display.flip()
-    clock.tick(60)
+    clock.tick(60) 
 
 sys.exit(0)
