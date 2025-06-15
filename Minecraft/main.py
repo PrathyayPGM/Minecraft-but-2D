@@ -511,7 +511,7 @@ class Pig:
         self.original_img = self.load_img()
         self.image = self.original_img
         self.gravity = 0
-        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 50 * 0.9, 59.375)
+        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], (50 * 0.9) * 1.3, 59.375 * 1.3)
         self.speed = random.uniform(1.0, 3.0)
         self.health = 5
         self.max_health = 5 
@@ -533,10 +533,10 @@ class Pig:
     def load_img(self):
         try:
             pig_img = pygame.image.load("textures/legend.png").convert_alpha()
-            return pygame.transform.scale(pig_img, (50 * 0.9, 59.375 ))
+            return pygame.transform.scale(pig_img, ((50 * 0.9) * 1.3, 59.375 * 1.3))
         except pygame.error as er:
             print(f"Error loading image: {er}")
-            placeholder = pygame.Surface((50 * 0.9, 59.375))
+            placeholder = pygame.Surface(((50 * 0.9) * 1.3, 59.375 * 1.3))
             placeholder.fill((255, 192, 203))  
             return placeholder
 
@@ -708,7 +708,7 @@ class Creeper:
         self.original_img = self.load_img()
         self.image = self.original_img
         self.gravity = 0
-        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 59.375 * 2, (50 * 0.9) * 2)
+        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], (59.375 * 1.2) * 1.5, ((50 * 0.9) * 2) * 1.5)
         self.speed = 1.5
         self.health = 10
         self.max_health = 10
@@ -731,10 +731,10 @@ class Creeper:
     def load_img(self):        
         try:
             creeper_img = pygame.image.load("textures/creeper.png").convert_alpha()
-            return pygame.transform.scale(creeper_img, (59.375 * 2, (50 * 0.9) *2))
+            return pygame.transform.scale(creeper_img, ((59.375 * 1.2) * 1.5, ((50 * 0.9) * 2) * 1.5))
         except pygame.error as er:
             print(f"Error loading image: {er}")
-            placeholder = pygame.Surface(( 59.375 * 2, (50 * 0.9) * 2))
+            placeholder = pygame.Surface(((59.375 * 1.2) * 1.5, ((50 * 0.9) * 2) * 1.5))
             placeholder.fill((0, 200, 0))  
             return placeholder
             
