@@ -624,7 +624,11 @@ class Sheep:
         self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
         self.knockback = 15  
         self.hit_cooldown = 10
-        return self.health <= 0  
+ 
+        # if self.health <= 0:
+            # return wool and mutton
+        return self.health <= 0 
+
 
 # hostile mobs
 class Zombie:
@@ -822,7 +826,7 @@ class Creeper:
         self.health = 10
         self.max_health = 10
         self.max_safe_fall = 25
-        self.damage = 0.01
+        self.damage = 3
         self.attack_cooldown = 0
         self.attack_delay = 1000 
         self.facing_right = True 
@@ -1365,6 +1369,8 @@ while running:
 
     fps_text = font.render(f"FPS: {int(clock.get_fps())}", True, (255, 0, 0))
     screen.blit(fps_text, (10, 10))
+    text = font.render(f"FATALCRAFT, ALPHA VERSION 1.1", True, (255, 255, 255))
+    screen.blit(text, (10, 30))
     
     if player.mining_block:
         block_rect = pygame.Rect(
