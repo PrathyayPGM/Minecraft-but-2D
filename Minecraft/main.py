@@ -412,99 +412,8 @@ class Player:
                 self.world_pos[1] = self.rect.y  
                 break
 player = Player()
-
-class Zombie:
-    def __init__(self):
-        self.world_pos = [random.randint(1, 999), HEIGHT - 200]
-        self.original_img = self.load_img()
-        self.image = self.original_img
-        self.gravity = 0
-        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 50, 150)
-        self.speed = 1.5
-        self.health = 10
-        self.max_health = 10
-        self.max_safe_fall = 25
-        self.damage = 0.01
-        self.attack_cooldown = 0
-        self.attack_delay = 1000 
-        self.facing_right = True 
-        self.knockback = 0 
-        self.knockback_resistance = 0.8  
-        self.knockback_direction = 1
-
-    def load_img(self):
-        try:
-            zombie_img = pygame.image.load("textures/zombie.png").convert_alpha()
-            return pygame.transform.scale(zombie_img, (50, 150))
-        except pygame.error as er:
-            print(f"Error loading image: {er}")
-            placeholder = pygame.Surface((50, 150))
-            placeholder.fill((0, 255, 0))  
-            return placeholder
-    def update(self, ground_blocks):
-        player_pos = player.world_pos
-        player_distance = abs(player_pos[0] - self.world_pos[0])
-        self.world_pos[1] += self.gravity
-        self.gravity += 0.8
-        self.on_ground = False
-        self.rect.x = self.world_pos[0]
-        self.rect.y = self.world_pos[1]
-        player_pos = player.world_pos
-        if self.knockback > 0:
-            self.world_pos[0] += self.knockback_direction * self.knockback
-            self.knockback *= self.knockback_resistance  
-            if self.knockback < 0.5:  
-                self.knockback = 0
-
-        if self.knockback <= 0:
-            if self.world_pos[0] < player_pos[0]:  
-                if not self.facing_right:
-                    self.facing_right = True
-                    self.image = self.original_img  
-                self.world_pos[0] += self.speed
-            else:  
-                if self.facing_right:
-                    self.facing_right = False
-                    self.image = pygame.transform.flip(self.original_img, True, False)        
-            
-            if player_distance <= 250:
-                if self.world_pos[0] < player_pos[0]:
-                    self.world_pos[0] += self.speed
-                else:
-                    self.world_pos[0] -= self.speed
-                if self.attack_cooldown > 0:
-                    self.attack_cooldown -= 1
-                if self.rect.colliderect(player.rect):
-                    player.health -= self.damage
-                    self.attack_cooldown = self.attack_delay
-                    if self.world_pos[0] < player_pos[0]:
-                        self.world_pos[0] += self.speed
-                    else:
-                        self.world_pos[0] -= self.speed
-
-        for block in ground_blocks:
-            if self.rect.colliderect(block.rect) and self.gravity >= 0 and self.rect.bottom > block.rect.top:
-                if self.gravity > self.max_safe_fall:
-                    self.health -= (self.gravity - self.max_safe_fall) * 0.2
-                self.on_ground = True
-                self.can_jump = True  
-                self.gravity = 0
-                self.rect.bottom = block.rect.top
-                self.world_pos[1] = self.rect.y  
-                break
-            elif self.gravity < 0 and self.rect.top < block.rect.bottom and self.rect.colliderect(block.rect):
-                self.gravity = 0
-                self.rect.top = block.rect.bottom
-                self.world_pos[1] = self.rect.y  
-                break
-    
-    def take_damage(self, amount):
-        self.health -= amount
-        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
-        self.knockback = 15  
-        self.hit_cooldown = 10
-        return self.health <= 0
-
+ 
+# passive mobs
 class Pig:
     def __init__(self):
         self.world_pos = [random.randint(1, 999), HEIGHT - 200]
@@ -610,6 +519,206 @@ class Pig:
         self.knockback = 15  
         self.hit_cooldown = 10
         return self.health <= 0
+
+class Sheep:
+    def __init__(self):
+        self.world_pos = [random.randint(1, 999), HEIGHT - 200]
+        self.original_img = self.load_img()
+        self.image = self.original_img
+        self.gravity = 0
+        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], (50 * 0.9) * 1.3, 59.375 * 1.3)
+        self.speed = random.uniform(1.0, 3.0)
+        self.health = 5
+        self.max_health = 5 
+        self.facing_right = random.choice([True, False]) 
+        self.max_safe_fall = 15  
+        self.knockback = 0 
+        self.knockback_resistance = 0.8  
+        self.knockback_direction = 1
+        self.on_ground = False
+        self.hit_cooldown = 0
+        self.move_direction = 1 if self.facing_right else -1
+        self.move_timer = random.randint(120, 240) 
+        self.idle_timer = 0
+        self.current_state = "wandering"  
+        self.jump_power = -15  
+        self.can_jump = True
+        self.jump_cooldown = 0
+
+    def load_img(self):
+        try:
+            sheep_img = pygame.image.load("textures/sheep.png").convert_alpha()
+            return pygame.transform.scale(sheep_img, ((50 * 0.9) * 1.3, 59.375 * 1.3))
+        except pygame.error as er:
+            print(f"Error loading image: {er}")
+            placeholder = pygame.Surface(((50 * 0.9) * 1.3, 59.375 * 1.3))
+            placeholder.fill((255, 255, 255))  
+            return placeholder
+
+    def update(self, ground_blocks):
+        if self.knockback > 0:
+            self.world_pos[0] += self.knockback_direction * self.knockback
+            self.knockback *= self.knockback_resistance  
+            if self.knockback < 0.5:  
+                self.knockback = 0
+
+        if self.current_state == "wandering":
+            self.move_timer -= 1
+            if self.move_timer <= 0:
+                choice = random.random()
+                if choice < 0.3:  
+                    self.current_state = "idle"
+                    self.idle_timer = random.randint(60, 120)
+                elif choice < 0.6:  
+                    self.move_direction *= -1
+                    self.move_timer = random.randint(120, 240)
+                else:  
+                    self.move_timer = random.randint(60, 180)
+            
+            self.world_pos[0] += self.move_direction * self.speed
+            
+            
+        elif self.current_state == "idle":
+            self.idle_timer -= 1
+            if self.idle_timer <= 0:
+                self.current_state = "wandering"
+                self.move_timer = random.randint(120, 240)
+                self.move_direction = random.choice([self.move_direction, -self.move_direction])
+        
+
+        self.gravity = min(self.gravity + 0.8, 20)
+        self.world_pos[1] += self.gravity
+
+        self.rect.x = self.world_pos[0]
+        self.rect.y = self.world_pos[1]
+
+        self.on_ground = False
+
+        for block in ground_blocks:
+            if self.rect.colliderect(block.rect) and self.gravity >= 0 and self.rect.bottom > block.rect.top:
+                if self.gravity > self.max_safe_fall:
+                    self.health -= (self.gravity - self.max_safe_fall) * 0.2
+                self.on_ground = True
+                self.can_jump = True  
+                self.gravity = 0
+                self.rect.bottom = block.rect.top
+                self.world_pos[1] = self.rect.y  
+                break
+            elif self.gravity < 0 and self.rect.top < block.rect.bottom and self.rect.colliderect(block.rect):
+                self.gravity = 0
+                self.rect.top = block.rect.bottom
+                self.world_pos[1] = self.rect.y  
+                break
+
+        if self.move_direction > 0:
+            self.facing_right = True
+        elif self.move_direction < 0:
+            self.facing_right = False
+        self.image = pygame.transform.flip(self.original_img, not self.facing_right, False)
+
+        if self.hit_cooldown > 0:
+            self.hit_cooldown -= 1
+
+    def take_damage(self, amount):
+        self.health -= amount
+        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
+        self.knockback = 15  
+        self.hit_cooldown = 10
+        return self.health <= 0  
+
+# hostile mobs
+class Zombie:
+    def __init__(self):
+        self.world_pos = [random.randint(1, 999), HEIGHT - 200]
+        self.original_img = self.load_img()
+        self.image = self.original_img
+        self.gravity = 0
+        self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 50, 150)
+        self.speed = 1.5
+        self.health = 10
+        self.max_health = 10
+        self.max_safe_fall = 25
+        self.damage = 0.01
+        self.attack_cooldown = 0
+        self.attack_delay = 1000 
+        self.facing_right = True 
+        self.knockback = 0 
+        self.knockback_resistance = 0.8  
+        self.knockback_direction = 1
+
+    def load_img(self):
+        try:
+            zombie_img = pygame.image.load("textures/zombie.png").convert_alpha()
+            return pygame.transform.scale(zombie_img, (50, 150))
+        except pygame.error as er:
+            print(f"Error loading image: {er}")
+            placeholder = pygame.Surface((50, 150))
+            placeholder.fill((0, 255, 0))  
+            return placeholder
+    def update(self, ground_blocks):
+        player_pos = player.world_pos
+        player_distance = abs(player_pos[0] - self.world_pos[0])
+        self.world_pos[1] += self.gravity
+        self.gravity += 0.8
+        self.on_ground = False
+        self.rect.x = self.world_pos[0]
+        self.rect.y = self.world_pos[1]
+        player_pos = player.world_pos
+        if self.knockback > 0:
+            self.world_pos[0] += self.knockback_direction * self.knockback
+            self.knockback *= self.knockback_resistance  
+            if self.knockback < 0.5:  
+                self.knockback = 0
+
+        if self.knockback <= 0:
+            if self.world_pos[0] < player_pos[0]:  
+                if not self.facing_right:
+                    self.facing_right = True
+                    self.image = self.original_img  
+                self.world_pos[0] += self.speed
+            else:  
+                if self.facing_right:
+                    self.facing_right = False
+                    self.image = pygame.transform.flip(self.original_img, True, False)        
+            
+            if player_distance <= 250:
+                if self.world_pos[0] < player_pos[0]:
+                    self.world_pos[0] += self.speed
+                else:
+                    self.world_pos[0] -= self.speed
+                if self.attack_cooldown > 0:
+                    self.attack_cooldown -= 1
+                if self.rect.colliderect(player.rect):
+                    player.health -= self.damage
+                    self.attack_cooldown = self.attack_delay
+                    if self.world_pos[0] < player_pos[0]:
+                        self.world_pos[0] += self.speed
+                    else:
+                        self.world_pos[0] -= self.speed
+
+        for block in ground_blocks:
+            if self.rect.colliderect(block.rect) and self.gravity >= 0 and self.rect.bottom > block.rect.top:
+                if self.gravity > self.max_safe_fall:
+                    self.health -= (self.gravity - self.max_safe_fall) * 0.2
+                self.on_ground = True
+                self.can_jump = True  
+                self.gravity = 0
+                self.rect.bottom = block.rect.top
+                self.world_pos[1] = self.rect.y  
+                break
+            elif self.gravity < 0 and self.rect.top < block.rect.bottom and self.rect.colliderect(block.rect):
+                self.gravity = 0
+                self.rect.top = block.rect.bottom
+                self.world_pos[1] = self.rect.y  
+                break
+    
+    def take_damage(self, amount):
+        self.health -= amount
+        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
+        self.knockback = 15  
+        self.hit_cooldown = 10
+        return self.health <= 0
+
 
 class Spider:
     def __init__(self):
@@ -906,12 +1015,14 @@ zombies = []
 spiders = []
 creepers = []  
 pigs = []
+sheeps = []
 last_spawn_time = 0
 spawn_interval = 300  
-max_spiders = 3
-max_zombies = 3
-max_pigs = 3
-max_creepers = 3
+max_spiders = random.randint(1, 4)
+max_zombies = random.randint(1, 4)
+max_pigs = random.randint(1, 4)
+max_sheeps = random.randint(1, 4)
+max_creepers = random.randint(1, 4)
 world = World()
 world.load()  
 camera = Camera(WIDTH, HEIGHT)
@@ -973,6 +1084,11 @@ while running:
                 if pig.rect.collidepoint(world_mouse_pos):
                     if pig.take_damage(player.attack):
                         pigs.remove(pig)
+                    break
+            for sheep in sheeps[:]:
+                if sheep.rect.collidepoint(world_mouse_pos):
+                    if sheep.take_damage(player.attack):
+                        sheeps.remove(sheep)
                     break
             for spider in spiders[:]:
                 if spider.rect.collidepoint(world_mouse_pos):
@@ -1042,6 +1158,13 @@ while running:
     
     if not is_day and pigs:
         pigs.clear()
+    
+    if is_day and current_time - last_spawn_time > spawn_interval and len(sheeps) < max_sheeps:
+        sheeps.append(Sheep())
+        last_spawn_time = current_time
+    
+    if not is_day and sheeps:
+        sheeps.clear()
     
     # mining/placing blocks
     mouse_buttons = pygame.mouse.get_pressed()
@@ -1232,6 +1355,10 @@ while running:
     for pig in pigs:
         pig.update(nearby_blocks)
         screen.blit(pig.image, (pig.rect.x - camera.camera.x, pig.rect.y - camera.camera.y))
+
+    for sheep in sheeps:
+        sheep.update(nearby_blocks)
+        screen.blit(sheep.image, (sheep.rect.x - camera.camera.x, sheep.rect.y - camera.camera.y))
         
     draw_hotbar(screen, player)
     draw_health_bar(screen, player)
