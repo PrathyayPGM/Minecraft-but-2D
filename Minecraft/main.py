@@ -515,9 +515,10 @@ class Pig:
 
     def take_damage(self, amount):
         self.health -= amount
-        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
+        self.knockback_direction = 1 if player.world_pos[0] < self.world_pos[0] else -1
         self.knockback = 15  
         self.hit_cooldown = 10
+        self.world_pos[0] += self.knockback_direction * self.knockback
         return self.health <= 0
 
 class Sheep:
@@ -621,13 +622,11 @@ class Sheep:
 
     def take_damage(self, amount):
         self.health -= amount
-        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
+        self.knockback_direction = 1 if player.world_pos[0] < self.world_pos[0] else -1
         self.knockback = 15  
         self.hit_cooldown = 10
- 
-        # if self.health <= 0:
-            # return wool and mutton
-        return self.health <= 0 
+        self.world_pos[0] += self.knockback_direction * self.knockback
+        return self.health <= 0
 
 
 # hostile mobs
@@ -718,9 +717,10 @@ class Zombie:
     
     def take_damage(self, amount):
         self.health -= amount
-        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
+        self.knockback_direction = 1 if player.world_pos[0] < self.world_pos[0] else -1
         self.knockback = 15  
         self.hit_cooldown = 10
+        self.world_pos[0] += self.knockback_direction * self.knockback
         return self.health <= 0
 
 
@@ -810,9 +810,10 @@ class Spider:
     
     def take_damage(self, amount):
         self.health -= amount
-        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
+        self.knockback_direction = 1 if player.world_pos[0] < self.world_pos[0] else -1
         self.knockback = 15  
         self.hit_cooldown = 10
+        self.world_pos[0] += self.knockback_direction * self.knockback
         return self.health <= 0
 
 class Creeper:
@@ -882,8 +883,10 @@ class Creeper:
         
     def take_damage(self, amount: float, direction: int) -> bool:
         self.health -= amount
-        self.knockback = 15
-        self.knockback_direction = direction
+        self.knockback_direction = 1 if player.world_pos[0] < self.world_pos[0] else -1
+        self.knockback = 15  
+        self.hit_cooldown = 10
+        self.world_pos[0] += self.knockback_direction * self.knockback
         return self.health <= 0
         
     def update(self, ground_blocks, player, world):
