@@ -363,7 +363,8 @@ class Player:
         self.gravity = 0
         self.rect = pygame.Rect(self.world_pos[0], self.world_pos[1], 50, 150)
         self.on_ground = False
-        self.speed = 5
+        self.sprinting = False
+        self.speed = 3.317
         self.facing_right = True
         self.health = 10
         self.max_health = 10
@@ -515,10 +516,9 @@ class Pig:
 
     def take_damage(self, amount):
         self.health -= amount
-        self.knockback_direction = 1 if player.world_pos[0] < self.world_pos[0] else -1
+        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
         self.knockback = 15  
         self.hit_cooldown = 10
-        self.world_pos[0] += self.knockback_direction * self.knockback
         return self.health <= 0
 
 class Sheep:
@@ -622,11 +622,13 @@ class Sheep:
 
     def take_damage(self, amount):
         self.health -= amount
-        self.knockback_direction = 1 if player.world_pos[0] < self.world_pos[0] else -1
+        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
         self.knockback = 15  
         self.hit_cooldown = 10
-        self.world_pos[0] += self.knockback_direction * self.knockback
-        return self.health <= 0
+ 
+        # if self.health <= 0:
+            # return wool and mutton
+        return self.health <= 0 
 
 
 # hostile mobs
@@ -717,10 +719,9 @@ class Zombie:
     
     def take_damage(self, amount):
         self.health -= amount
-        self.knockback_direction = 1 if player.world_pos[0] < self.world_pos[0] else -1
+        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
         self.knockback = 15  
         self.hit_cooldown = 10
-        self.world_pos[0] += self.knockback_direction * self.knockback
         return self.health <= 0
 
 
@@ -810,10 +811,9 @@ class Spider:
     
     def take_damage(self, amount):
         self.health -= amount
-        self.knockback_direction = 1 if player.world_pos[0] < self.world_pos[0] else -1
+        self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
         self.knockback = 15  
         self.hit_cooldown = 10
-        self.world_pos[0] += self.knockback_direction * self.knockback
         return self.health <= 0
 
 class Creeper:
@@ -883,10 +883,8 @@ class Creeper:
         
     def take_damage(self, amount: float, direction: int) -> bool:
         self.health -= amount
-        self.knockback_direction = 1 if player.world_pos[0] < self.world_pos[0] else -1
-        self.knockback = 15  
-        self.hit_cooldown = 10
-        self.world_pos[0] += self.knockback_direction * self.knockback
+        self.knockback = 15
+        self.knockback_direction = direction
         return self.health <= 0
         
     def update(self, ground_blocks, player, world):
@@ -1018,6 +1016,8 @@ def draw_health_bar(screen, player):
     font = pygame.font.SysFont(None, 24)
     health_text = font.render(f"Health: {player.health:.1f}/{player.max_health}", True, WHITE)
     screen.blit(health_text, (health_x + health_height, health_y))
+
+
 zombies = []  
 spiders = []
 creepers = []  
@@ -1113,6 +1113,20 @@ while running:
         player.world_pos[0] += player.speed
         player.image = player.original_image
         player.facing_right = True
+    if (keys[pygame.K_LEFT] or keys[pygame.K_a]):
+        player.sprinting = keys[pygame.K_LSHIFT]  
+        player.speed = 6.612 if player.sprinting else 3.317
+        player.world_pos[0] -= player.speed
+        player.image = pygame.transform.flip(player.original_image, True, False)
+        player.facing_right = False
+        
+    if (keys[pygame.K_RIGHT] or keys[pygame.K_d]):
+        player.sprinting = keys[pygame.K_LSHIFT] 
+        player.speed = 6.612 if player.sprinting else 3.317
+        player.world_pos[0] += player.speed
+        player.image = player.original_image
+        player.facing_right = True
+
 
     # void damage
     if player.world_pos[1] > HEIGHT * 4:
