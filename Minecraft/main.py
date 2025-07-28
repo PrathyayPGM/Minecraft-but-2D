@@ -730,6 +730,7 @@ class Zombie:
                     self.attack_cooldown -= 1
                 if self.rect.colliderect(player.rect):
                     player.health -= self.damage
+                    
                     self.attack_cooldown = self.attack_delay
                     if self.world_pos[0] < player_pos[0]:
                         self.world_pos[0] += self.speed
@@ -1176,7 +1177,7 @@ while running:
     if player.world_pos[1] > HEIGHT * 4:
         player.damage_frames += 1
         if player.damage_frames >= player.damage_delay:
-            player.health -= 0.5
+            player.health -= 2
             player.damage_frames = 0
             hurt_sound.play()
     else:
