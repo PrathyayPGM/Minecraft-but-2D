@@ -23,6 +23,7 @@ HOTBAR_WIDTH = HOTBAR_SLOTS * SLOT_SIZE
 HOTBAR_HEIGHT = SLOT_SIZE
 HOTBAR_MARGIN = 10  
 SELECTED_COLOR = (255, 255, 0)  
+block = 50
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -227,7 +228,7 @@ class Dirtblock(Block):
 class Stoneblock(Block):
     def __init__(self, x, y):
         super().__init__(x, y)
-        self.health = 125
+        self.health = 175
     def load_img(self):
         try:
             stone_block = pygame.image.load("textures/stone.png").convert_alpha()
@@ -241,7 +242,7 @@ class Stoneblock(Block):
 class IronOre(Block):
     def __init__(self,x, y):
         super().__init__(x, y)
-        self.health = 150
+        self.health = 200
     def load_img(self):
         try:
             iron = pygame.image.load("textures/iron.png").convert_alpha()
@@ -255,7 +256,7 @@ class IronOre(Block):
 class Coal(Block):
     def __init__(self,x, y):
         super().__init__(x, y)
-        self.health = 110
+        self.health = 170
     def load_img(self):
         try:
             coal = pygame.image.load("textures/coal.png").convert_alpha()
@@ -269,7 +270,7 @@ class Coal(Block):
 class Diamond(Block):
     def __init__(self, x, y):
         super().__init__(x, y)
-        self.health = 150
+        self.health = 250
     def load_img(self):
         try:
             diamond = pygame.image.load("textures/diamond.png").convert_alpha()
@@ -310,7 +311,7 @@ class Wood(Block):
 class Leaves(Block):
     def __init__(self, x, y):
         super().__init__(x, y)
-        self.health = 5
+        self.health = 10
     
     def load_img(self):
         try:
@@ -366,7 +367,7 @@ class Player:
         self.sprinting = False
         self.speed = 3.317
         self.facing_right = True
-        self.health = 10
+        self.health = 20
         self.max_health = 10
         self.damage_frames = 0
         self.damage_delay = 30
@@ -379,6 +380,9 @@ class Player:
         self.max_safe_fall = 25 
         self.fall_damage = 0  
         self.attack = 1
+        self.heart_size = 16 
+        self.heart_images = self.load_heart_images()
+        
                 
     def load_img(self): 
         try:
@@ -412,6 +416,37 @@ class Player:
                 self.rect.top = block.rect.bottom
                 self.world_pos[1] = self.rect.y  
                 break
+    def craft(self):
+        pass
+    def load_heart_images(self):
+        try:
+            heart_full = pygame.image.load("textures/heart_full.png").convert_alpha()
+            heart_half = pygame.image.load("textures/heart_half.png").convert_alpha()
+            heart_empty = pygame.image.load("textures/heart_empty.png").convert_alpha()
+            
+            # Scale images if needed
+            heart_full = pygame.transform.scale(heart_full, (self.heart_size, self.heart_size))
+            heart_half = pygame.transform.scale(heart_half, (self.heart_size, self.heart_size))
+            heart_empty = pygame.transform.scale(heart_empty, (self.heart_size, self.heart_size))
+            
+            return {
+                "full": heart_full,
+                "half": heart_half,
+                "empty": heart_empty
+            }
+        except:
+            print("Could not load heart images - using colored squares instead")
+            heart = pygame.Surface((self.heart_size, self.heart_size))
+            heart.fill((255, 0, 0))
+            half_heart = pygame.Surface((self.heart_size, self.heart_size))
+            half_heart.fill((255, 100, 100))
+            empty = pygame.Surface((self.heart_size, self.heart_size))
+            empty.fill((50, 50, 50))
+            return {
+                "full": heart,
+                "half": half_heart,
+                "empty": empty
+            }
 player = Player()
  
 # passive mobs
@@ -724,7 +759,7 @@ class Zombie:
         self.hit_cooldown = 10
         return self.health <= 0
 
-
+     
 class Spider:
     def __init__(self):
         self.world_pos = [random.randint(1, 999), HEIGHT - 200]
@@ -1002,20 +1037,29 @@ def draw_hotbar(screen, player):
                      SLOT_SIZE + 4, SLOT_SIZE + 4), 2)
 
 def draw_health_bar(screen, player):
-    health_width = 200
-    health_height = 20
-    health_x = 320
-    health_y = 725
+    heart_size = player.heart_size
+    padding = 1  
+    total_width = (player.max_health / 2) * (heart_size + padding)
 
-    pygame.draw.rect(screen, (50, 50, 50), (health_x, health_y, health_width, health_height))
-    health_level = max(0, (player.health / player.max_health) * health_width)
-    pygame.draw.rect(screen, (255, 0, 0), (health_x, health_y, health_level, health_height))
-    # border
-    pygame.draw.rect(screen, WHITE, (health_x, health_y, health_width, health_height), 2)
+    start_x = 320
+    start_y = 725
 
-    font = pygame.font.SysFont(None, 24)
-    health_text = font.render(f"Health: {player.health:.1f}/{player.max_health}", True, WHITE)
-    screen.blit(health_text, (health_x + health_height, health_y))
+    full_hearts = int(player.health // 2)
+    half_hearts = player.health % 2 >= 1
+    empty_hearts = int((player.max_health - player.health) // 2)
+    
+    x_offset = 0
+    for _ in range(full_hearts):
+        screen.blit(player.heart_images["full"], (start_x + x_offset, start_y))
+        x_offset += heart_size + padding
+    
+    if half_hearts:
+        screen.blit(player.heart_images["half"], (start_x + x_offset, start_y))
+        x_offset += heart_size + padding
+        empty_hearts -= 1  
+    
+
+    
 
 
 zombies = []  
@@ -1138,7 +1182,7 @@ while running:
     else:
         player.damage_frames = 0 
     
-    if player.health <= 0:
+    if player.health < 1:
         screen.fill(BLACK)
         font = pygame.font.SysFont(None, 72)
         text = font.render("GET WRECKED LOL", True, (255, 0, 0))
