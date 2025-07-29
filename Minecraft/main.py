@@ -26,10 +26,10 @@ SELECTED_COLOR = (255, 255, 0)
 block = 50
 
 pygame.init()
+mixer.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("FatalCraft")
 
-mixer.init()
 font = pygame.font.SysFont('Arial', 20)
 class Particle:
     def __init__(self, x, y, color):
@@ -380,7 +380,7 @@ class Player:
         self.max_safe_fall = 25 
         self.fall_damage = 0  
         self.attack = 1
-        self.heart_size = 16 
+        self.heart_size = 20 
         self.heart_images = self.load_heart_images()
         
                 
@@ -405,6 +405,7 @@ class Player:
             if self.rect.colliderect(block.rect) and self.gravity >= 0 and self.rect.bottom > block.rect.top:
                 if self.gravity > self.max_safe_fall:
                     self.health -= (self.gravity - self.max_safe_fall) * 0.2
+                    hurt_sound.play()
                 self.on_ground = True
                 self.can_jump = True  
                 self.gravity = 0
@@ -554,6 +555,7 @@ class Pig:
         self.knockback_direction = 1 if player.world_pos[1] < self.rect.x else -1
         self.knockback = 15  
         self.hit_cooldown = 10
+        self.image.fill((255, 0, 0))
         return self.health <= 0
 
 class Sheep:
@@ -730,6 +732,7 @@ class Zombie:
                     self.attack_cooldown -= 1
                 if self.rect.colliderect(player.rect):
                     player.health -= self.damage
+                    hurt_sound.play()
                     
                     self.attack_cooldown = self.attack_delay
                     if self.world_pos[0] < player_pos[0]:
@@ -823,6 +826,7 @@ class Spider:
                     self.attack_cooldown -= 1
                 if self.rect.colliderect(player.rect):
                     player.health -= self.damage
+                    hurt_sound.play()
                     self.attack_cooldown = self.attack_delay
                     if self.world_pos[0] < player_pos[0]:
                         self.world_pos[0] += self.speed
@@ -901,7 +905,8 @@ class Creeper:
                 pygame.math.Vector2(self.rect.center))
             if distance < self.explosion_radius:
                 player.health -= self.explosion_damage * (1 - distance/self.explosion_radius)
-            
+                hurt_sound.play()
+
             blocks_nearby = world.get_nearby_blocks(self.rect.center, self.explosion_radius)
             for block in blocks_nearby[:]:
                 if not isinstance(block, Bedrock):
@@ -1039,7 +1044,7 @@ def draw_hotbar(screen, player):
 
 def draw_health_bar(screen, player):
     heart_size = player.heart_size
-    padding = 1  
+    padding = 0.2
     total_width = (player.max_health / 2) * (heart_size + padding)
 
     start_x = 320
@@ -1058,9 +1063,6 @@ def draw_health_bar(screen, player):
         screen.blit(player.heart_images["half"], (start_x + x_offset, start_y))
         x_offset += heart_size + padding
         empty_hearts -= 1  
-    
-
-    
 
 
 zombies = []  
@@ -1078,17 +1080,11 @@ max_creepers = random.randint(1, 4)
 world = World()
 world.load()  
 camera = Camera(WIDTH, HEIGHT)
-
 try:
-    mine_sound = mixer.Sound("sounds/mine.wav")
-    place_sound = mixer.Sound("sounds/place.wav")
-    jump_sound = mixer.Sound("sounds/jump.wav")
-    hurt_sound = mixer.Sound("sounds/hurt.wav")
+    hurt_sound = mixer.Sound("sounds/hurt.mp3")
 except:
     print("Could not load sounds")
-    mine_sound = mixer.Sound(buffer=bytearray(100))
-    place_sound = mixer.Sound(buffer=bytearray(100))
-    jump_sound = mixer.Sound(buffer=bytearray(100))
+
     hurt_sound = mixer.Sound(buffer=bytearray(100))
 
 running = True
@@ -1109,7 +1105,6 @@ while running:
                 player.gravity = player.jump_power
                 player.on_ground = False
                 player.can_jump = False
-                jump_sound.play()
             
             if pygame.K_1 <= event.key <= pygame.K_9:
                 player.selected_slot = event.key - pygame.K_1
@@ -1330,7 +1325,7 @@ while running:
                     if (chunk_x, chunk_y) in world.chunks:
                         world.chunks[(chunk_x, chunk_y)].remove(block)
                     
-                    mine_sound.play()
+                    
                     player.mining_block = None
                     player.mining_progress = 0
                 break
@@ -1383,7 +1378,7 @@ while running:
                 if selected_item["count"] <= 0:
                     selected_item["type"] = None
                 
-                place_sound.play()
+                
     nearby_blocks = world.get_nearby_blocks((player.rect.x, player.rect.y), 1000)
     player.update(nearby_blocks)
     camera.update(player)
@@ -1449,4 +1444,4 @@ while running:
     pygame.display.flip()
     clock.tick(60) 
 
-sys.exit(0)
+sys.exit(1)
