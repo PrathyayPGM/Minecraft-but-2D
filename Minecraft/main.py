@@ -368,7 +368,7 @@ class Player:
         self.speed = 3.317
         self.facing_right = True
         self.health = 20
-        self.max_health = 10
+        self.max_health = 20
         self.damage_frames = 0
         self.damage_delay = 30
         self.selected_slot = 0
@@ -1063,6 +1063,10 @@ def draw_health_bar(screen, player):
         screen.blit(player.heart_images["half"], (start_x + x_offset, start_y))
         x_offset += heart_size + padding
         empty_hearts -= 1  
+    
+    for _ in range(empty_hearts):
+        screen.blit(player.heart_images["empty"], (start_x + x_offset, start_y))
+        x_offset += heart_size + padding
 
 
 zombies = []  
